@@ -24,7 +24,7 @@ pragma solidity ^0.4.4;
  */
 
 contract Evidence {
-    bytes32[] private credentialHash;
+    bytes32[] private dataHash;
     address[] private signer;
     bytes32[] private r;
     bytes32[] private s;
@@ -50,7 +50,7 @@ contract Evidence {
         uint numOfHashParts = hashValue.length;
         uint index;
         for (index = 0; index < numOfHashParts; index++) {
-            credentialHash.push(hashValue[index]);
+            dataHash.push(hashValue[index]);
         }
         uint numOfSigners = signerValue.length;
         for (index = 0; index < numOfSigners; index++) {
@@ -74,11 +74,11 @@ contract Evidence {
         bytes32[] extraValue
     )
     {
-        uint numOfHashParts = credentialHash.length;
+        uint numOfHashParts = dataHash.length;
         uint index;
         hashValue = new bytes32[](numOfHashParts);
         for (index = 0; index < numOfHashParts; index++) {
-            hashValue[index] = credentialHash[index];
+            hashValue[index] = dataHash[index];
         }
         uint numOfSigners = signer.length;
         signerValue = new address[](numOfSigners);

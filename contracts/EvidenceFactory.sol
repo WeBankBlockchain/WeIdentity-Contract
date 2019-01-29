@@ -35,7 +35,7 @@ contract EvidenceFactory {
     event CreateEvidenceLog(uint retCode, address addr);
 
     function createEvidence(
-        bytes32[] credentialHash,
+        bytes32[] dataHash,
         address[] signer,
         bytes32 r,
         bytes32 s,
@@ -52,7 +52,7 @@ contract EvidenceFactory {
                 return false;
             }
         }
-        Evidence evidence = new Evidence(credentialHash, signer, r, s, v, extra);
+        Evidence evidence = new Evidence(dataHash, signer, r, s, v, extra);
         CreateEvidenceLog(RETURN_CODE_SUCCESS, evidence);
         return true;
     }
