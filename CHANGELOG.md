@@ -1,3 +1,11 @@
+### V1.1.0 (2019-01-30)
+
+* 新增：
+1. Evidence存证数据及工厂合约
+
+* Added:
+1. Smart Contract for Evidence management, including data & factory contracts.
+
 ### V1.0.0 (2018-10-30)
 
 * 新增:
