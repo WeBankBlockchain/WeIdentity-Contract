@@ -21,19 +21,19 @@ pragma solidity ^0.4.4;
 import "./AuthorityIssuerData.sol";
 
 contract CptData {
-
-    uint constant private AUTHORITY_ISSUER_MAX_CPT_ID = 1999999;
-
-    uint authority_issuer_start_id = 100;
-
-    uint none_authority_issuer_start_id = 2000000;
+    // CPT ID has been categorized into 3 zones: 0 - 999 are reserved for system CPTs,
+    //  1000-2000000 for Authority Issuer's CPTs, and the rest for common WeIdentiy DIDs.
+    uint constant private AUTHORITY_ISSUER_START_ID = 1000;
+    uint constant private NONE_AUTHORITY_ISSUER_START_ID = 2000000;
+    uint private AUTHORITY_ISSUER_CURRENT_ID = 1000;
+    uint private NONE_AUTHORITY_ISSUER_CURRENT_ID = 2000000;
 
     AuthorityIssuerData private authorityIssuerData;
 
     function CptData(
-		address authorityIssuerDataAddress
-	) 
-	    public
+        address authorityIssuerDataAddress
+    ) 
+        public
     {
         authorityIssuerData = AuthorityIssuerData(authorityIssuerDataAddress);
     }
@@ -60,21 +60,29 @@ contract CptData {
     mapping (uint => Cpt) private cptMap;
 
     function putCpt(
-	    uint cptId, 
-		address cptPublisher, 
-		int[8] cptIntArray, 
-		bytes32[8] cptBytes32Array,
-		bytes32[128] cptJsonSchemaArray, 
-		uint8 cptV, 
-		bytes32 cptR, 
-		bytes32 cptS
-	) 
-		public 
-		returns (bool) 
+        uint cptId, 
+        address cptPublisher, 
+        int[8] cptIntArray, 
+        bytes32[8] cptBytes32Array,
+        bytes32[128] cptJsonSchemaArray, 
+        uint8 cptV, 
+        bytes32 cptR, 
+        bytes32 cptS
+    ) 
+        public 
+        returns (bool) 
     {
         Signature memory cptSignature = Signature({v: cptV, r: cptR, s: cptS});
         cptMap[cptId] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
         return true;
+    }
+
+    function getAuthorityIssuerStarterCptId() public constant returns (uint cptId) {
+        cptId = AUTHORITY_ISSUER_START_ID;
+    }
+
+    function getNonAuthorityIssuerStarterCptId() public constant returns (uint cptId) {
+        cptId = NONE_AUTHORITY_ISSUER_START_ID;
     }
 
     function getCptId(
@@ -86,28 +94,34 @@ contract CptData {
         (uint cptId)
     {
         if (authorityIssuerData.isAuthorityIssuer(publisher)) {
-            cptId = authority_issuer_start_id++;
-            if (cptId > AUTHORITY_ISSUER_MAX_CPT_ID) {
+            while (isCptExist(AUTHORITY_ISSUER_CURRENT_ID)) {
+                AUTHORITY_ISSUER_CURRENT_ID++;
+            }
+            cptId = AUTHORITY_ISSUER_CURRENT_ID++;
+            if (cptId >= NONE_AUTHORITY_ISSUER_START_ID) {
                 cptId = 0;
             }
         } else {
-            cptId = none_authority_issuer_start_id++;
+            while (isCptExist(NONE_AUTHORITY_ISSUER_CURRENT_ID)) {
+                NONE_AUTHORITY_ISSUER_CURRENT_ID++;
+            }
+            cptId = NONE_AUTHORITY_ISSUER_CURRENT_ID++;
         }
     }
 
     function getCpt(
-	    uint cptId
-	) 
-		public 
-		constant 
-		returns (
-		address publisher, 
-		int[8] intArray, 
-		bytes32[8] bytes32Array,
-		bytes32[128] jsonSchemaArray, 
-		uint8 v, 
-		bytes32 r, 
-		bytes32 s) 
+        uint cptId
+    ) 
+        public 
+        constant 
+        returns (
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s) 
     {
         Cpt memory cpt = cptMap[cptId];
         publisher = cpt.publisher;
