@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -23,10 +23,10 @@ import "./AuthorityIssuerData.sol";
 contract CptData {
     // CPT ID has been categorized into 3 zones: 0 - 999 are reserved for system CPTs,
     //  1000-2000000 for Authority Issuer's CPTs, and the rest for common WeIdentiy DIDs.
-    uint constant private AUTHORITY_ISSUER_START_ID = 1000;
-    uint constant private NONE_AUTHORITY_ISSUER_START_ID = 2000000;
-    uint private AUTHORITY_ISSUER_CURRENT_ID = 1000;
-    uint private NONE_AUTHORITY_ISSUER_CURRENT_ID = 2000000;
+    uint constant public AUTHORITY_ISSUER_START_ID = 1000;
+    uint constant public NONE_AUTHORITY_ISSUER_START_ID = 2000000;
+    uint private authority_issuer_current_id = 1000;
+    uint private none_authority_issuer_current_id = 2000000;
 
     AuthorityIssuerData private authorityIssuerData;
 
@@ -77,14 +77,6 @@ contract CptData {
         return true;
     }
 
-    function getAuthorityIssuerStarterCptId() public constant returns (uint cptId) {
-        cptId = AUTHORITY_ISSUER_START_ID;
-    }
-
-    function getNonAuthorityIssuerStarterCptId() public constant returns (uint cptId) {
-        cptId = NONE_AUTHORITY_ISSUER_START_ID;
-    }
-
     function getCptId(
         address publisher
     ) 
@@ -94,18 +86,18 @@ contract CptData {
         (uint cptId)
     {
         if (authorityIssuerData.isAuthorityIssuer(publisher)) {
-            while (isCptExist(AUTHORITY_ISSUER_CURRENT_ID)) {
-                AUTHORITY_ISSUER_CURRENT_ID++;
+            while (isCptExist(authority_issuer_current_id)) {
+                authority_issuer_current_id++;
             }
-            cptId = AUTHORITY_ISSUER_CURRENT_ID++;
+            cptId = authority_issuer_current_id++;
             if (cptId >= NONE_AUTHORITY_ISSUER_START_ID) {
                 cptId = 0;
             }
         } else {
-            while (isCptExist(NONE_AUTHORITY_ISSUER_CURRENT_ID)) {
-                NONE_AUTHORITY_ISSUER_CURRENT_ID++;
+            while (isCptExist(none_authority_issuer_current_id)) {
+                none_authority_issuer_current_id++;
             }
-            cptId = NONE_AUTHORITY_ISSUER_CURRENT_ID++;
+            cptId = none_authority_issuer_current_id++;
         }
     }
 

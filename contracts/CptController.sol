@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -24,11 +24,15 @@ import "./RoleController.sol";
 
 contract CptController {
 
+    // Error codes
     uint constant private CPT_NOT_EXIST = 500301;
     uint constant private AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX = 500302;
     uint constant private CPT_PUBLISHER_NOT_EXIST = 500303;
     uint constant private CPT_ALREADY_EXIST = 500304;
     uint constant private NO_PERMISSION = 500305;
+
+    // Default CPT version
+    int constant private CPT_DEFAULT_VERSION = 1;
 
     CptData private cptData;
     WeIdContract private weIdContract;
@@ -82,8 +86,8 @@ contract CptController {
 
         // Authority related checks. We use tx.origin here to decide the authority. For SDK
         // calls, publisher and tx.origin are normally the same. For DApp calls, tx.origin dictates.
-        uint lowId = cptData.getAuthorityIssuerStarterCptId();
-        uint highId = cptData.getNonAuthorityIssuerStarterCptId();
+        uint lowId = cptData.AUTHORITY_ISSUER_START_ID();
+        uint highId = cptData.NONE_AUTHORITY_ISSUER_START_ID();
         if (cptId < lowId) {
             // Only committee member can create this
             if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
@@ -98,7 +102,7 @@ contract CptController {
             }
         }
 
-        int cptVersion = 1;
+        int cptVersion = CPT_DEFAULT_VERSION;
         intArray[0] = cptVersion;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
 
@@ -128,7 +132,7 @@ contract CptController {
             RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
             return false;
         }
-        int cptVersion = 1;
+        int cptVersion = CPT_DEFAULT_VERSION;
         intArray[0] = cptVersion;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
 
