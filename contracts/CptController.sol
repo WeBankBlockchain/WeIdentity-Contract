@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -20,50 +20,108 @@ pragma solidity ^0.4.4;
 
 import "./CptData.sol";
 import "./WeIdContract.sol";
+import "./RoleController.sol";
 
 contract CptController {
 
+    // Error codes
     uint constant private CPT_NOT_EXIST = 500301;
     uint constant private AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX = 500302;
     uint constant private CPT_PUBLISHER_NOT_EXIST = 500303;
+    uint constant private CPT_ALREADY_EXIST = 500304;
+    uint constant private NO_PERMISSION = 500305;
+
+    // Default CPT version
+    int constant private CPT_DEFAULT_VERSION = 1;
 
     CptData private cptData;
     WeIdContract private weIdContract;
+    RoleController private roleController;
 
     function CptController(
-	    address cptDataAddress,
-        address weIdContractAddress
-	) 
-	    public
+        address cptDataAddress,
+        address weIdContractAddress,
+        address roleControllerAddress
+    ) 
+        public
     {
         cptData = CptData(cptDataAddress);
         weIdContract = WeIdContract(weIdContractAddress);
+        roleController = RoleController(roleControllerAddress);
     }
 
     event RegisterCptRetLog(
-		uint retCode, 
-		uint cptId, 
-		int cptVersion
-	);
+        uint retCode, 
+        uint cptId, 
+        int cptVersion
+    );
 
     event UpdateCptRetLog(
-		uint retCode, 
-		uint cptId, 
-		int cptVersion
-	);
+        uint retCode, 
+        uint cptId, 
+        int cptVersion
+    );
 
     function registerCpt(
-	    address publisher, 
-		int[8] intArray, 
-		bytes32[8] bytes32Array,
-		bytes32[128] jsonSchemaArray, 
-		uint8 v, 
-		bytes32 r, 
-		bytes32 s
-	) 
-	    public 
-		returns (bool) 
-	{
+        uint cptId,
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    )
+        public
+        returns (bool)
+    {
+        if (!weIdContract.isIdentityExist(publisher)) {
+            RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
+            return false;
+        }
+        if (cptData.isCptExist(cptId)) {
+            RegisterCptRetLog(CPT_ALREADY_EXIST, cptId, 0);
+            return false;
+        }
+
+        // Authority related checks. We use tx.origin here to decide the authority. For SDK
+        // calls, publisher and tx.origin are normally the same. For DApp calls, tx.origin dictates.
+        uint lowId = cptData.AUTHORITY_ISSUER_START_ID();
+        uint highId = cptData.NONE_AUTHORITY_ISSUER_START_ID();
+        if (cptId < lowId) {
+            // Only committee member can create this
+            if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                return false;
+            }
+        } else if (cptId < highId) {
+            // Only authority issuer can create this
+            if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
+                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                return false;
+            }
+        }
+
+        int cptVersion = CPT_DEFAULT_VERSION;
+        intArray[0] = cptVersion;
+        cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
+
+        RegisterCptRetLog(0, cptId, cptVersion);
+        return true;
+    }
+
+    function registerCpt(
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    ) 
+        public 
+        returns (bool) 
+    {
         if (!weIdContract.isIdentityExist(publisher)) {
             RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
@@ -72,9 +130,9 @@ contract CptController {
         uint cptId = cptData.getCptId(publisher); 
         if (cptId == 0) {
             RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
-			return false;
+            return false;
         }
-        int cptVersion = 1;
+        int cptVersion = CPT_DEFAULT_VERSION;
         intArray[0] = cptVersion;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
 
@@ -83,18 +141,18 @@ contract CptController {
     }
 
     function updateCpt(
-	    uint cptId, 
-		address publisher, 
-		int[8] intArray, 
-		bytes32[8] bytes32Array,
-		bytes32[128] jsonSchemaArray, 
-		uint8 v, 
-		bytes32 r, 
-		bytes32 s
-	) 
-	    public 
-		returns (bool) 
-	{
+        uint cptId, 
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    ) 
+        public 
+        returns (bool) 
+    {
         if (!weIdContract.isIdentityExist(publisher)) {
             UpdateCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
@@ -116,11 +174,11 @@ contract CptController {
     }
 
     function queryCpt(
-	    uint cptId
-	) 
-	    public 
-		constant 
-		returns (
+        uint cptId
+    ) 
+        public 
+        constant 
+        returns (
         address publisher, 
         int[] intArray, 
         bytes32[] bytes32Array,

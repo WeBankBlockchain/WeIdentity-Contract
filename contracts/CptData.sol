@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -21,19 +21,19 @@ pragma solidity ^0.4.4;
 import "./AuthorityIssuerData.sol";
 
 contract CptData {
-
-    uint constant private AUTHORITY_ISSUER_MAX_CPT_ID = 1999999;
-
-    uint authority_issuer_start_id = 100;
-
-    uint none_authority_issuer_start_id = 2000000;
+    // CPT ID has been categorized into 3 zones: 0 - 999 are reserved for system CPTs,
+    //  1000-2000000 for Authority Issuer's CPTs, and the rest for common WeIdentiy DIDs.
+    uint constant public AUTHORITY_ISSUER_START_ID = 1000;
+    uint constant public NONE_AUTHORITY_ISSUER_START_ID = 2000000;
+    uint private authority_issuer_current_id = 1000;
+    uint private none_authority_issuer_current_id = 2000000;
 
     AuthorityIssuerData private authorityIssuerData;
 
     function CptData(
-		address authorityIssuerDataAddress
-	) 
-	    public
+        address authorityIssuerDataAddress
+    ) 
+        public
     {
         authorityIssuerData = AuthorityIssuerData(authorityIssuerDataAddress);
     }
@@ -60,17 +60,17 @@ contract CptData {
     mapping (uint => Cpt) private cptMap;
 
     function putCpt(
-	    uint cptId, 
-		address cptPublisher, 
-		int[8] cptIntArray, 
-		bytes32[8] cptBytes32Array,
-		bytes32[128] cptJsonSchemaArray, 
-		uint8 cptV, 
-		bytes32 cptR, 
-		bytes32 cptS
-	) 
-		public 
-		returns (bool) 
+        uint cptId, 
+        address cptPublisher, 
+        int[8] cptIntArray, 
+        bytes32[8] cptBytes32Array,
+        bytes32[128] cptJsonSchemaArray, 
+        uint8 cptV, 
+        bytes32 cptR, 
+        bytes32 cptS
+    ) 
+        public 
+        returns (bool) 
     {
         Signature memory cptSignature = Signature({v: cptV, r: cptR, s: cptS});
         cptMap[cptId] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
@@ -86,28 +86,34 @@ contract CptData {
         (uint cptId)
     {
         if (authorityIssuerData.isAuthorityIssuer(publisher)) {
-            cptId = authority_issuer_start_id++;
-            if (cptId > AUTHORITY_ISSUER_MAX_CPT_ID) {
+            while (isCptExist(authority_issuer_current_id)) {
+                authority_issuer_current_id++;
+            }
+            cptId = authority_issuer_current_id++;
+            if (cptId >= NONE_AUTHORITY_ISSUER_START_ID) {
                 cptId = 0;
             }
         } else {
-            cptId = none_authority_issuer_start_id++;
+            while (isCptExist(none_authority_issuer_current_id)) {
+                none_authority_issuer_current_id++;
+            }
+            cptId = none_authority_issuer_current_id++;
         }
     }
 
     function getCpt(
-	    uint cptId
-	) 
-		public 
-		constant 
-		returns (
-		address publisher, 
-		int[8] intArray, 
-		bytes32[8] bytes32Array,
-		bytes32[128] jsonSchemaArray, 
-		uint8 v, 
-		bytes32 r, 
-		bytes32 s) 
+        uint cptId
+    ) 
+        public 
+        constant 
+        returns (
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s) 
     {
         Cpt memory cpt = cptMap[cptId];
         publisher = cpt.publisher;
