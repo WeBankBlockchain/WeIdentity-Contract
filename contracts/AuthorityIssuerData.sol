@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -39,6 +39,8 @@ contract AuthorityIssuerData {
     mapping (address => AuthorityIssuer) private authorityIssuerMap;
     // Array used to index and count the address (WeID address). Depends on mapping, no standalone creator.
     address[] private authorityIssuerArray;
+    // Unique authority issuer name mapping.
+    mapping (bytes32 => bool) private uniqueNameMap;
 
     RoleController private roleController;
 
@@ -72,7 +74,7 @@ contract AuthorityIssuerData {
     )
         public
     {
-        if (isAuthorityIssuer(addr)) {
+        if (isAuthorityIssuer(addr) || isNameDuplicate(attribBytes32[0])) {
             return;
         }
 
@@ -84,6 +86,7 @@ contract AuthorityIssuerData {
         AuthorityIssuer memory authorityIssuer = AuthorityIssuer(attribBytes32, attribInt, accValue);
         authorityIssuerMap[addr] = authorityIssuer;
         authorityIssuerArray.push(addr);
+        uniqueNameMap[attribBytes32[0]] = true;
     }
 
     function deleteAuthorityIssuerFromAddress(
@@ -100,6 +103,7 @@ contract AuthorityIssuerData {
         }
 
         roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+        uniqueNameMap[authorityIssuerMap[addr].attribBytes32[0]] = false;
         delete authorityIssuerMap[addr];
         uint datasetLength = authorityIssuerArray.length;
         for (uint index = 0; index < datasetLength; index++) {
@@ -156,5 +160,15 @@ contract AuthorityIssuerData {
         returns (bytes) 
     {
         return authorityIssuerMap[addr].accValue;
+    }
+
+    function isNameDuplicate(
+        bytes32 name
+    )
+        public
+        constant
+        returns (bool) 
+    {
+        return uniqueNameMap[name];
     }
 }
