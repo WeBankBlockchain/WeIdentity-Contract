@@ -53,10 +53,6 @@ contract SpecificIssuerController {
     }
 
     function registerIssuerType(bytes32 typeName) public {
-        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NO_PERMISSION, typeName, 0x0);
-            return;
-        }
         bool result = specificIssuerData.registerIssuerType(typeName);
         if (!result) {
             SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, typeName, 0x0);
