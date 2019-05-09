@@ -24,23 +24,61 @@ pragma solidity ^0.4.4;
  */
 
 contract SpecificIssuerData {
+
+    // Error codes
+    uint constant private RETURN_CODE_SUCCESS = 0;
+    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500501;
+    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500502;
+    uint constant private RETURN_CODE_FAILURE_EXCEED_MAX = 500503;
+
     struct IssuerType {
         // typeName as index, dynamic array as getAt function and mapping as search
         bytes32 typeName;
-        address[] member;
-        mapping (address => bool) isMember;
+        address[] fellow;
+        mapping (address => bool) isFellow;
+        bytes32[8] extra;
     }
 
     mapping (bytes32 => IssuerType) private issuerTypeMap;
 
-    function registerIssuerType(bytes32 typeName) public returns (bool) {
+    function registerIssuerType(bytes32 typeName) public returns (uint) {
         if (isIssuerTypeExist(typeName)) {
-            return false;
+            return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
-        address[] memory member;
-        IssuerType memory issuerType = IssuerType(typeName, member);
+        address[] memory fellow;
+        bytes32[8] memory extra;
+        IssuerType memory issuerType = IssuerType(typeName, fellow, extra);
         issuerTypeMap[typeName] = issuerType;
-        return true;
+        return RETURN_CODE_SUCCESS;
+    }
+
+    function addExtraValue(bytes32 typeName, bytes32 extraValue) public returns (uint) {
+        if (!isIssuerTypeExist(typeName)) {
+            return RETURN_CODE_FAILURE_NOT_EXIST;
+        }
+        IssuerType issuerType = issuerTypeMap[typeName];
+        for (uint index = 0; index < 8; index++) {
+            if (issuerType.extra[index] == bytes32(0)) {
+                issuerType.extra[index] = extraValue;
+                break;
+            }
+        }
+        if (index == 8) {
+            return RETURN_CODE_FAILURE_EXCEED_MAX;
+        }
+        return RETURN_CODE_SUCCESS;
+    }
+
+    function getExtraValue(bytes32 typeName) public constant returns (bytes32[8]) {
+        bytes32[8] memory extraValues;
+        if (!isIssuerTypeExist(typeName)) {
+            return extraValues;
+        }
+        IssuerType issuerType = issuerTypeMap[typeName];
+        for (uint index = 0; index < 8; index++) {
+            extraValues[index] = issuerType.extra[index];
+        }
+        return extraValues;
     }
 
     function isIssuerTypeExist(bytes32 name) public constant returns (bool) {
@@ -50,53 +88,56 @@ contract SpecificIssuerData {
         return true;
     }
 
-    function addIssuer(bytes32 typeName, address addr) public returns (bool) {
-        if (isSpecificTypeIssuer(typeName, addr) || !isIssuerTypeExist(typeName)) {
-            return false;
+    function addIssuer(bytes32 typeName, address addr) public returns (uint) {
+        if (isSpecificTypeIssuer(typeName, addr)) {
+            return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
-        issuerTypeMap[typeName].member.push(addr);
-        issuerTypeMap[typeName].isMember[addr] = true;
-        return true;
+        if (!isIssuerTypeExist(typeName)) {
+            return RETURN_CODE_FAILURE_NOT_EXIST;
+        }
+        issuerTypeMap[typeName].fellow.push(addr);
+        issuerTypeMap[typeName].isFellow[addr] = true;
+        return RETURN_CODE_SUCCESS;
     }
 
-    function removeIssuer(bytes32 typeName, address addr) public returns (bool) {
+    function removeIssuer(bytes32 typeName, address addr) public returns (uint) {
         if (!isSpecificTypeIssuer(typeName, addr) || !isIssuerTypeExist(typeName)) {
-            return false;
+            return RETURN_CODE_FAILURE_NOT_EXIST;
         }
-        address[] memory member = issuerTypeMap[typeName].member;
-        uint dataLength = member.length;
+        address[] memory fellow = issuerTypeMap[typeName].fellow;
+        uint dataLength = fellow.length;
         for (uint index = 0; index < dataLength; index++) {
-            if (addr == member[index]) {
+            if (addr == fellow[index]) {
                 break;
             }
         }
         if (index != dataLength-1) {
-            issuerTypeMap[typeName].member[index] = issuerTypeMap[typeName].member[dataLength-1];
+            issuerTypeMap[typeName].fellow[index] = issuerTypeMap[typeName].fellow[dataLength-1];
         }
-        delete issuerTypeMap[typeName].member[dataLength-1];
-        issuerTypeMap[typeName].member.length--;
-        issuerTypeMap[typeName].isMember[addr] = false;
-        return true;
+        delete issuerTypeMap[typeName].fellow[dataLength-1];
+        issuerTypeMap[typeName].fellow.length--;
+        issuerTypeMap[typeName].isFellow[addr] = false;
+        return RETURN_CODE_SUCCESS;
     }
 
     function isSpecificTypeIssuer(bytes32 typeName, address addr) public constant returns (bool) {
-        if (issuerTypeMap[typeName].isMember[addr] == false) {
+        if (issuerTypeMap[typeName].isFellow[addr] == false) {
             return false;
         }
         return true;
     }
 
-    function getSpecificTypeIssuerMembers(bytes32 typeName, uint startPos) public constant returns (address[50]) {
-        address[50] memory member;
+    function getSpecificTypeIssuers(bytes32 typeName, uint startPos) public constant returns (address[50]) {
+        address[50] memory fellow;
         if (!isIssuerTypeExist(typeName)) {
-            return member;
+            return fellow;
         }
 
         // Calculate actual dataLength via batch return for better perf
-        uint totalLength = getSpecificTypeIssuerMemberLength(typeName);
+        uint totalLength = getSpecificTypeIssuerLength(typeName);
         uint dataLength;
         if (totalLength < startPos) {
-            return member;
+            return fellow;
         } else if (totalLength <= startPos + 50) {
             dataLength = totalLength - startPos;
         } else {
@@ -105,15 +146,15 @@ contract SpecificIssuerData {
 
         // dynamic -> static array data copy
         for (uint index = 0; index < dataLength; index++) {
-            member[index] = issuerTypeMap[typeName].member[index + startPos];
+            fellow[index] = issuerTypeMap[typeName].fellow[index + startPos];
         }
-        return member;
+        return fellow;
     }
 
-    function getSpecificTypeIssuerMemberLength(bytes32 typeName) public constant returns (uint) {
+    function getSpecificTypeIssuerLength(bytes32 typeName) public constant returns (uint) {
         if (!isIssuerTypeExist(typeName)) {
             return 0;
         }
-        return issuerTypeMap[typeName].member.length;
+        return issuerTypeMap[typeName].fellow.length;
     }
 }

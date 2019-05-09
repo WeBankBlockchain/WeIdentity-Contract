@@ -34,10 +34,6 @@ contract SpecificIssuerController {
     // Event structure to store tx records
     uint constant private OPERATION_ADD = 0;
     uint constant private OPERATION_REMOVE = 1;
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500501;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500502;
-    uint constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500503;
 
     event SpecificIssuerRetLog(uint operation, uint retCode, bytes32 typeName, address addr);
 
@@ -53,12 +49,8 @@ contract SpecificIssuerController {
     }
 
     function registerIssuerType(bytes32 typeName) public {
-        bool result = specificIssuerData.registerIssuerType(typeName);
-        if (!result) {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, typeName, 0x0);
-        } else {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_SUCCESS, typeName, 0x0);
-        }
+        uint result = specificIssuerData.registerIssuerType(typeName);
+        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, 0x0);
     }
 
     function isIssuerTypeExist(bytes32 typeName) public constant returns (bool) {
@@ -67,47 +59,51 @@ contract SpecificIssuerController {
 
     function addIssuer(bytes32 typeName, address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NO_PERMISSION, typeName, addr);
+            SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
             return;
         }
-        if (!specificIssuerData.isIssuerTypeExist(typeName)) {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NOT_EXIST, typeName, addr);
-        }
-        bool result = specificIssuerData.addIssuer(typeName, addr);
-        if (!result) {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, typeName, addr);
-        } else {
-            SpecificIssuerRetLog(OPERATION_ADD, RETURN_CODE_SUCCESS, typeName, addr);
-        }
+        uint result = specificIssuerData.addIssuer(typeName, addr);
+        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, addr);
     }
 
     function removeIssuer(bytes32 typeName, address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NO_PERMISSION, typeName, addr);
+            SpecificIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
             return;
         }
-        if (!specificIssuerData.isIssuerTypeExist(typeName)) {
-            SpecificIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NOT_EXIST, typeName, addr);
+        uint result = specificIssuerData.removeIssuer(typeName, addr);
+        SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, addr);
+    }
+
+    function addExtraValue(bytes32 typeName, bytes32 extraValue) public {
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
+            SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, 0x0);
+            return;
         }
-        bool result = specificIssuerData.removeIssuer(typeName, addr);
-        if (!result) {
-            SpecificIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NOT_EXIST, typeName, addr);
-        } else {
-            SpecificIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_SUCCESS, typeName, addr);
+        uint result = specificIssuerData.addExtraValue(typeName, extraValue);
+        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, 0x0);
+    }
+
+    function getExtraValue(bytes32 typeName) public constant returns (bytes32[]) {
+        bytes32[8] memory tempArray = specificIssuerData.getExtraValue(typeName);
+        bytes32[] memory resultArray = new bytes32[](8);
+        for (uint index = 0; index < 8; index++) {
+            resultArray[index] = tempArray[index];
         }
+        return resultArray;
     }
 
     function isSpecificTypeIssuer(bytes32 typeName, address addr) public constant returns (bool) {
         return specificIssuerData.isSpecificTypeIssuer(typeName, addr);
     }
 
-    function getAllSpecificTypeIssuer(bytes32 typeName, uint startPos, uint num) public constant returns (address[]) {
+    function getSpecificTypeIssuerList(bytes32 typeName, uint startPos, uint num) public constant returns (address[]) {
         if (num == 0 || !specificIssuerData.isIssuerTypeExist(typeName)) {
             return new address[](50);
         }
 
         // Calculate actual dataLength via batch return for better perf
-        uint totalLength = specificIssuerData.getSpecificTypeIssuerMemberLength(typeName);
+        uint totalLength = specificIssuerData.getSpecificTypeIssuerLength(typeName);
         uint dataLength;
         if (totalLength < startPos) {
             return new address[](50);
@@ -121,7 +117,7 @@ contract SpecificIssuerController {
 
         address[] memory resultArray = new address[](dataLength);
         address[50] memory tempArray;
-        tempArray = specificIssuerData.getSpecificTypeIssuerMembers(typeName, startPos);
+        tempArray = specificIssuerData.getSpecificTypeIssuers(typeName, startPos);
         uint tick;
         if (dataLength <= 50) {
             for (tick = 0; tick < dataLength; tick++) {

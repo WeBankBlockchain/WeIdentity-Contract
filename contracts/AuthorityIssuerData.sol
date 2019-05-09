@@ -27,6 +27,12 @@ import "./RoleController.sol";
 
 contract AuthorityIssuerData {
 
+    // Error codes
+    uint constant private RETURN_CODE_SUCCESS = 0;
+    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
+    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
+    uint constant private RETURN_CODE_NAME_ALREADY_EXISTS = 500203;
+
     struct AuthorityIssuer {
         // [0]: name
         bytes32[16] attribBytes32;
@@ -35,16 +41,13 @@ contract AuthorityIssuerData {
         bytes accValue;
     }
 
-    // Mapping key: address (WeID address), value: Authority Issuer instance.
     mapping (address => AuthorityIssuer) private authorityIssuerMap;
-    // Array used to index and count the address (WeID address). Depends on mapping, no standalone creator.
     address[] private authorityIssuerArray;
-    // Unique authority issuer name mapping.
     mapping (bytes32 => bool) private uniqueNameMap;
 
     RoleController private roleController;
 
-    // Constructor.
+    // Constructor
     function AuthorityIssuerData(address addr) public {
         roleController = RoleController(addr);
     }
@@ -56,14 +59,12 @@ contract AuthorityIssuerData {
         constant 
         returns (bool) 
     {
-        // Use LOCAL ARRAY INDEX here, not the RoleController data.
-        // The latter one might lose track in the fresh-deploy or upgrade case.
-        for (uint index = 0; index < authorityIssuerArray.length; index++) {
-            if (authorityIssuerArray[index] == addr) {
-                return true;
-            }
+        // Use LOCAL INFO here, not the RoleController data
+        // The latter one might lose track in the fresh-deploy or upgrade case
+        if (authorityIssuerMap[addr].attribBytes32[0] == bytes32(0)) {
+            return false;
         }
-        return false;
+        return true;
     }
 
     function addAuthorityIssuerFromAddress(
@@ -73,35 +74,37 @@ contract AuthorityIssuerData {
         bytes accValue
     )
         public
+        returns (uint)
     {
-        if (isAuthorityIssuer(addr) || isNameDuplicate(attribBytes32[0])) {
-            return;
+        if (isAuthorityIssuer(addr)) {
+            return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
-
+        if (isNameDuplicate(attribBytes32[0])) {
+            return RETURN_CODE_NAME_ALREADY_EXISTS;
+        }
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            return;
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
-
         roleController.addRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
         AuthorityIssuer memory authorityIssuer = AuthorityIssuer(attribBytes32, attribInt, accValue);
         authorityIssuerMap[addr] = authorityIssuer;
         authorityIssuerArray.push(addr);
         uniqueNameMap[attribBytes32[0]] = true;
+        return RETURN_CODE_SUCCESS;
     }
 
     function deleteAuthorityIssuerFromAddress(
         address addr
     ) 
         public 
+        returns (uint)
     {
         if (!isAuthorityIssuer(addr)) {
-            return;
+            return RETURN_CODE_FAILURE_NOT_EXIST;
         }
-
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            return;
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
-
         roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
         uniqueNameMap[authorityIssuerMap[addr].attribBytes32[0]] = false;
         delete authorityIssuerMap[addr];
@@ -116,6 +119,7 @@ contract AuthorityIssuerData {
         }
         delete authorityIssuerArray[datasetLength-1];
         authorityIssuerArray.length--;
+        return RETURN_CODE_SUCCESS;
     }
 
     function getDatasetLength() 

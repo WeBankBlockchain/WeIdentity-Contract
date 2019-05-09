@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -34,10 +34,6 @@ contract CommitteeMemberController {
     // Event structure to store tx records
     uint constant private OPERATION_ADD = 0;
     uint constant private OPERATION_REMOVE = 1;
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500251;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500252;
-    uint constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500253;
     
     event CommitteeRetLog(uint operation, uint retCode, address addr);
 
@@ -57,33 +53,25 @@ contract CommitteeMemberController {
     ) 
         public 
     {
-        if (committeeMemberData.isCommitteeMember(addr)) {
-            CommitteeRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
+            CommitteeRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            CommitteeRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            committeeMemberData.addCommitteeMemberFromAddress(addr);
-            CommitteeRetLog(OPERATION_ADD, RETURN_CODE_SUCCESS, addr);
         }
+        uint result = committeeMemberData.addCommitteeMemberFromAddress(addr);
+        CommitteeRetLog(OPERATION_ADD, result, addr);
     }
-    
+
     function removeCommitteeMember(
         address addr
     ) 
         public 
     {
-        if (!committeeMemberData.isCommitteeMember(addr)) {
-            CommitteeRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NOT_EXIST, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
+            CommitteeRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            CommitteeRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            committeeMemberData.deleteCommitteeMemberFromAddress(addr);
-            CommitteeRetLog(OPERATION_REMOVE, RETURN_CODE_SUCCESS, addr);
         }
+        uint result = committeeMemberData.deleteCommitteeMemberFromAddress(addr);
+        CommitteeRetLog(OPERATION_REMOVE, result, addr);
     }
 
     function getAllCommitteeMemberAddress() 

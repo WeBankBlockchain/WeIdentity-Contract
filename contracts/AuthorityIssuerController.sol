@@ -34,11 +34,6 @@ contract AuthorityIssuerController {
     // Event structure to store tx records
     uint constant private OPERATION_ADD = 0;
     uint constant private OPERATION_REMOVE = 1;
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
-    uint constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500203;
-    uint constant private RETURN_CODE_NAME_ALREADY_EXISTS = 500204;
     uint constant private EMPTY_ARRAY_SIZE = 1;
 
     event AuthorityIssuerRetLog(uint operation, uint retCode, address addr);
@@ -62,20 +57,12 @@ contract AuthorityIssuerController {
     )
         public
     {
-        if (authorityIssuerData.isNameDuplicate(attribBytes32[0])) {
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_NAME_ALREADY_EXISTS, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            AuthorityIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
         }
-        if (authorityIssuerData.isAuthorityIssuer(addr)) {
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, addr);
-            return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_SUCCESS, addr);
-        }
+        uint result = authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
+        AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
     }
 
     function removeAuthorityIssuer(
@@ -83,19 +70,15 @@ contract AuthorityIssuerController {
     ) 
         public 
     {
-        if (!authorityIssuerData.isAuthorityIssuer(addr)) {
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NOT_EXIST, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            AuthorityIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            authorityIssuerData.deleteAuthorityIssuerFromAddress(addr);
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_SUCCESS, addr);
         }
+        uint result = authorityIssuerData.deleteAuthorityIssuerFromAddress(addr);
+        AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
     }
 
-    function getAllAuthorityIssuerAddress(
+    function getAuthorityIssuerAddressList(
         uint startPos,
         uint num
     ) 

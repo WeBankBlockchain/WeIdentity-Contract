@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -25,6 +25,12 @@ pragma solidity ^0.4.4;
  */
 
 contract RoleController {
+
+    /**
+     * The universal NO_PERMISSION error code.
+     */
+    uint constant public RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
+
     /**
      * Role related Constants.
      */
