@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -26,9 +26,12 @@ import "./RoleController.sol";
  */
 
 contract CommitteeMemberData {
-    // Array used to index and record the address of committee member.
-    address[] private committeeMemberArray;
 
+    uint constant private RETURN_CODE_SUCCESS = 0;
+    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500251;
+    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500252;
+
+    address[] private committeeMemberArray;
     RoleController private roleController;
 
     function CommitteeMemberData(address addr) public {
@@ -55,31 +58,32 @@ contract CommitteeMemberData {
     function addCommitteeMemberFromAddress(
         address addr
     ) 
-        public 
+        public
+        returns (uint)
     {
         if (isCommitteeMember(addr)) {
-            return;
+            return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            return;
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
         roleController.addRole(addr, roleController.ROLE_COMMITTEE());
         committeeMemberArray.push(addr);
+        return RETURN_CODE_SUCCESS;
     }
 
     function deleteCommitteeMemberFromAddress(
         address addr
     ) 
-        public 
+        public
+        returns (uint)
     {
         if (!isCommitteeMember(addr)) {
-            return;
+            return RETURN_CODE_FAILURE_NOT_EXIST;
         }
-
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            return;
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
-
         roleController.removeRole(addr, roleController.ROLE_COMMITTEE());
         uint datasetLength = committeeMemberArray.length;
         for (uint index = 0; index < datasetLength; index++) {
@@ -90,6 +94,7 @@ contract CommitteeMemberData {
         }
         delete committeeMemberArray[datasetLength-1];
         committeeMemberArray.length--;
+        return RETURN_CODE_SUCCESS;
     }
 
     function getDatasetLength() 

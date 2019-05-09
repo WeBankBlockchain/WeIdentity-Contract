@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018) WeBank Co., Ltd.
+ *       Copyright© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -34,10 +34,7 @@ contract AuthorityIssuerController {
     // Event structure to store tx records
     uint constant private OPERATION_ADD = 0;
     uint constant private OPERATION_REMOVE = 1;
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
-    uint constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500203;
+    uint constant private EMPTY_ARRAY_SIZE = 1;
 
     event AuthorityIssuerRetLog(uint operation, uint retCode, address addr);
 
@@ -60,16 +57,12 @@ contract AuthorityIssuerController {
     )
         public
     {
-        if (authorityIssuerData.isAuthorityIssuer(addr)) {
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_ALREADY_EXISTS, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            AuthorityIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
-            AuthorityIssuerRetLog(OPERATION_ADD, RETURN_CODE_SUCCESS, addr);
         }
+        uint result = authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
+        AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
     }
 
     function removeAuthorityIssuer(
@@ -77,28 +70,37 @@ contract AuthorityIssuerController {
     ) 
         public 
     {
-        if (!authorityIssuerData.isAuthorityIssuer(addr)) {
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NOT_EXIST, addr);
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            AuthorityIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
-        } else if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_FAILURE_NO_PERMISSION, addr);
-            return;
-        } else {
-            authorityIssuerData.deleteAuthorityIssuerFromAddress(addr);
-            AuthorityIssuerRetLog(OPERATION_REMOVE, RETURN_CODE_SUCCESS, addr);
         }
+        uint result = authorityIssuerData.deleteAuthorityIssuerFromAddress(addr);
+        AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
     }
 
-    function getAllAuthorityIssuerAddress() 
+    function getAuthorityIssuerAddressList(
+        uint startPos,
+        uint num
+    ) 
         public 
         constant 
         returns (address[]) 
     {
-        // solidity 0.4.4 restrictions, use per-index access
-        uint datasetLength = authorityIssuerData.getDatasetLength();
-        address[] memory issuerArray = new address[](datasetLength);
-        for (uint index = 0; index < datasetLength; index++) {
-            issuerArray[index] = authorityIssuerData.getAuthorityIssuerFromIndex(index);
+        uint totalLength = authorityIssuerData.getDatasetLength();
+
+        uint dataLength;
+        // Calculate actual dataLength
+        if (totalLength < startPos) {
+            return new address[](EMPTY_ARRAY_SIZE);
+        } else if (totalLength <= startPos + num) {
+            dataLength = totalLength - startPos;
+        } else {
+            dataLength = num;
+        }
+
+        address[] memory issuerArray = new address[](dataLength);
+        for (uint index = 0; index < dataLength; index++) {
+            issuerArray[index] = authorityIssuerData.getAuthorityIssuerFromIndex(startPos + index);
         }
         return issuerArray;
     }
