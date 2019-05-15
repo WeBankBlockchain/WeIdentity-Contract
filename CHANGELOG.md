@@ -1,3 +1,10 @@
+### V1.2.1 (2019-05-15)
+* 修正：
+1. 修改了CptController的构造方法，保证后向兼容性
+
+* Bugfixes：
+1. Reverted the constructor of CptController to ensure backward compatibility.
+
 ### V1.2.0 (2019-05-10)
 * 新增：
 1. SpecificIssuer数据合约及逻辑合约，用于在链上登记特定类型issuer角色
