@@ -38,16 +38,34 @@ contract CptController {
     WeIdContract private weIdContract;
     RoleController private roleController;
 
+    // Reserved for contract owner check
+    address private internalRoleControllerAddress;
+    address private owner;
+
     function CptController(
         address cptDataAddress,
-        address weIdContractAddress,
-        address roleControllerAddress
+        address weIdContractAddress
     ) 
         public
     {
+        owner = msg.sender;
         cptData = CptData(cptDataAddress);
         weIdContract = WeIdContract(weIdContractAddress);
+    }
+
+    function setRoleController(
+        address roleControllerAddress
+    )
+        public
+    {
+        if (msg.sender != owner || roleControllerAddress == 0x0) {
+            return;
+        }
         roleController = RoleController(roleControllerAddress);
+        if (roleController.ROLE_ADMIN() <= 0) {
+            return;
+        }
+        internalRoleControllerAddress = roleControllerAddress;
     }
 
     event RegisterCptRetLog(
@@ -89,13 +107,21 @@ contract CptController {
         uint lowId = cptData.AUTHORITY_ISSUER_START_ID();
         uint highId = cptData.NONE_AUTHORITY_ISSUER_START_ID();
         if (cptId < lowId) {
-            // Only committee member can create this
+            // Only committee member can create this, check initialization first
+            if (internalRoleControllerAddress == 0x0) {
+                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                return false;
+            }
             if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
                 RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
             }
         } else if (cptId < highId) {
-            // Only authority issuer can create this
+            // Only authority issuer can create this, check initialization first
+            if (internalRoleControllerAddress == 0x0) {
+                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                return false;
+            }
             if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
                 RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
