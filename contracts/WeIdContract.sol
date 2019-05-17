@@ -26,7 +26,10 @@ contract WeIdContract {
       require (actor == identity);
       _;
     }
-    
+
+    bytes32 constant private WEID_KEY_CREATED = "created";
+    bytes32 constant private WEID_KEY_AUTHENTICATION = "/weId/auth";
+
     event WeIdAttributeChanged(
         address indexed identity,
         bytes32 key,
@@ -44,6 +47,20 @@ contract WeIdContract {
     {
         return changed[identity];
     }
+
+    function createWeId(
+        address identity,
+        bytes auth,
+        bytes created,
+        int updated
+    )
+        public
+        onlyOwner(identity, msg.sender)
+        {
+            WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
+            WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
+            changed[identity] = block.number;
+        }
 
     function setAttribute(
         address identity, 
