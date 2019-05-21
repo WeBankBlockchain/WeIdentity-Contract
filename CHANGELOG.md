@@ -1,3 +1,8 @@
+### V1.2.2 (2019-05-21)
+* 新增：
+1. WeIdContract新增createWeId方法，支持在创建weidentity did时设置公钥
+
+
 ### V1.2.1 (2019-05-15)
 * 修正：
 1. 修改了CptController的构造方法，保证后向兼容性
