@@ -1,7 +1,20 @@
+### V1.2.3 (2019-06-27)
+* 修正：
+1. 修改了weIdContract的合约格式。
+2. 修改了工程名，对应的java版本的release由weidentity-contract-java改为weid-contract-java。
+3. UpdateCpt()增加了权限控制，现在必须要拥有管理员权限或是注册者本人才能更新。
+
+* Bugfixes:
+1. WeIdContract code re-formatted.
+2. Project name changed from "weidentity-" to "weid-".
+3. UpdateCpt() now requires permission - only the publisher or the administrator can perform this.
+
 ### V1.2.2 (2019-05-21)
 * 新增：
 1. WeIdContract新增createWeId方法，支持在创建weidentity did时设置公钥
 
+* Added:
+1. WeIdContract now has a new createWeId() method to automatically set public keys and authentication type.
 
 ### V1.2.1 (2019-05-15)
 * 修正：

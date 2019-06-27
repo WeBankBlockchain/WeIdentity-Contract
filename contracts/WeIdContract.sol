@@ -22,9 +22,9 @@ contract WeIdContract {
 
     mapping(address => uint) changed;
 
-	modifier onlyOwner(address identity, address actor) {
-      require (actor == identity);
-      _;
+    modifier onlyOwner(address identity, address actor) {
+        require (actor == identity);
+        _;
     }
 
     bytes32 constant private WEID_KEY_CREATED = "created";
@@ -82,9 +82,9 @@ contract WeIdContract {
         constant 
         returns (bool) 
     {
-    	if (0x0 != identity && 0 != changed[identity]) {
-    		return true;
-    	}
-    	return false;
+        if (0x0 != identity && 0 != changed[identity]) {
+            return true;
+    }
+        return false;
     }
 }
