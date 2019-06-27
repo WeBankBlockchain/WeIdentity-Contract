@@ -1,0 +1,59 @@
+sudo: required
+dist: xenial
+
+# blocklist
+branches:
+  except:
+    - /^release.*/
+
+# safelist
+branches:
+  only:
+    - master
+    - develop
+
+language: java
+jdk:
+  - openjdk8
+
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
+before_install:
+  - gradle wrapper
+
+jobs:
+  include:
+    - stage: "WeID-Contract CI"
+      script:
+        - chmod +x build-tools/bin/*.sh
+        - build-tools/bin/run.sh
+    - stage: "WeID-Java-SDK CI"
+      script:
+        - chmod +x ci/script/weid-java-sdk/build-ci.sh
+        - ci/script/weid-java-sdk/build-ci.sh
+      if: (branch = master)
+    - stage: "WeID dependency pipeline"
+      script:
+        - chmod +x ci/script/weid-http-service/build-ci.sh
+        - ci/script/weid-http-service/build-ci.sh
+      name: "HTTP Rest Service simple CI"
+      if: (branch = master)
+    - stage: "WeID dependency pipeline"
+      script:
+        - chmod +x ci/script/weid-build-tools/build-ci.sh
+        - ci/script/weid-build-tools/build-ci.sh
+      name: "Build Tools simple CI"
+      if: (branch = master)
+    - stage: "WeID dependency pipeline"
+      script:
+        - chmod +x ci/script/weid-sample/build-ci.sh
+        - ci/script/weid-sample/build-ci.sh
+      name: "Sample simple CI"
+      if: (branch = master)
