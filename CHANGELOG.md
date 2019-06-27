@@ -1,3 +1,9 @@
+### V1.2.3 (2019-06-27)
+* 修正：
+1. 修改了weIdContract的合约格式。
+2. 修改了工程名，对应的java版本的release由weidentity-contract-java改为weid-contract-java。
+
+
 ### V1.2.2 (2019-05-21)
 * 新增：
 1. WeIdContract新增createWeId方法，支持在创建weidentity did时设置公钥
