@@ -184,7 +184,7 @@ contract CptController {
             return false;
         }
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())
-            || publisher != cptData.getCptPublisher(cptId)) {
+            && publisher != cptData.getCptPublisher(cptId)) {
             UpdateCptRetLog(NO_PERMISSION, 0, 0);
             return false;
         }
