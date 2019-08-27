@@ -56,9 +56,18 @@ contract Evidence {
         for (index = 0; index < numOfSigners; index++) {
             signer.push(signerValue[index]);
         }
-        r.push(rValue);
-        s.push(sValue);
-        v.push(vValue);
+        // Init signature fields - should always be of the same size as signer array
+        for (index = 0; index < numOfSigners; index++) {
+            if (tx.origin == signer[index]) {
+                r.push(rValue);
+                s.push(sValue);
+                v.push(vValue);
+            } else {
+                r.push(bytes32(0));
+                s.push(bytes32(0));
+                v.push(uint8(0));
+            }
+        }
         uint numOfExtraValue = extraValue.length;
         for (index = 0; index < numOfExtraValue; index++) {
             extraContent.push(extraValue[index]);
@@ -113,10 +122,9 @@ contract Evidence {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
             if (tx.origin == signer[index]) {
-                signer.push(tx.origin);
-                r.push(rValue);
-                s.push(sValue);
-                v.push(vValue);
+                r[index] = rValue;
+                s[index] = sValue;
+                v[index] = vValue;
                 AddSignatureLog(RETURN_CODE_SUCCESS, tx.origin, rValue, sValue, vValue);
                 return true;
             }
