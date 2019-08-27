@@ -36,6 +36,7 @@ contract Evidence {
     uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
     event AddSignatureLog(uint retCode, address signer, bytes32 r, bytes32 s, uint8 v);
     event AddExtraContentLog(uint retCode, address sender, bytes32 extraContent);
+    event SetHashLog(uint retCode, address signer);
 
     function Evidence(
         bytes32[] hashValue,
@@ -130,6 +131,36 @@ contract Evidence {
             }
         }
         AddSignatureLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, rValue, sValue, vValue);
+        return false;
+    }
+
+    function setHash(bytes32[] hashArray) public returns (bool) {
+        uint numOfHashData = dataHash.length;
+        if (numOfHashData > 0) {
+            for (uint index = 0; index < numOfHashData; index++) {
+                if (dataHash[index] != bytes32(0)) {
+                    SetHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
+                    return false;
+                }
+            }
+        }
+        if (hashArray.length == 0) {
+            SetHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
+            return false;
+        }
+        uint numOfSigners = signer.length;
+        for (uint j = 0; j < numOfSigners; index++) {
+            if (tx.origin == signer[j]) {
+                uint numOfHashParts = hashArray.length;
+                dataHash = new bytes32[](numOfHashParts);
+                for (uint i = 0; i < numOfHashParts; i++) {
+                    dataHash[i] = hashArray[i];
+                }
+                SetHashLog(RETURN_CODE_SUCCESS, tx.origin);
+                return true;
+            }
+        }
+        SetHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
         return false;
     }
 
