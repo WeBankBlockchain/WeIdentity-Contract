@@ -22,7 +22,7 @@ import "./Evidence.sol";
 
  /**
  * @title EvidenceFactory
- * Evidence factory contract.
+ * Evidence factory contract, also support evidence address lookup service.
  */
 
 contract EvidenceFactory {
@@ -33,6 +33,10 @@ contract EvidenceFactory {
     uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
 
     event CreateEvidenceLog(uint retCode, address addr);
+    event PutEvidenceLog(uint retCode, address addr);
+
+    mapping (bytes32 => address) private evidenceMappingPre;
+    mapping (bytes32 => address) private evidenceMappingAfter;
 
     function createEvidence(
         bytes32[] dataHash,
@@ -55,5 +59,27 @@ contract EvidenceFactory {
         Evidence evidence = new Evidence(dataHash, signer, r, s, v, extra);
         CreateEvidenceLog(RETURN_CODE_SUCCESS, evidence);
         return true;
+    }
+    
+    function putEvidence(bytes32[] hashValue, address addr) public returns (bool) {
+        if (hashValue.length < 2 || addr == 0x0) {
+            PutEvidenceLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, addr);
+            return false;
+        }
+        evidenceMappingPre[hashValue[0]] = addr;
+        evidenceMappingAfter[hashValue[1]] = addr;
+        PutEvidenceLog(RETURN_CODE_SUCCESS, addr);
+        return true;
+    }
+
+    function getEvidence(bytes32[] hashValue) public constant returns (address) {
+        if (hashValue.length < 2) {
+            return 0x0;
+        }
+        address addr = evidenceMappingPre[hashValue[0]];
+        if (addr == evidenceMappingAfter[hashValue[1]]) {
+            return addr;
+        }
+        return 0x0;
     }
 }
