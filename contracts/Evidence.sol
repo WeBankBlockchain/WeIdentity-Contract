@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       CopyrightÂ© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -36,6 +36,7 @@ contract Evidence {
     uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
     event AddSignatureLog(uint retCode, address signer, bytes32 r, bytes32 s, uint8 v);
     event AddExtraContentLog(uint retCode, address sender, bytes32 extraContent);
+    event AddHashLog(uint retCode, address signer);
 
     function Evidence(
         bytes32[] hashValue,
@@ -131,6 +132,22 @@ contract Evidence {
         }
         AddSignatureLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, rValue, sValue, vValue);
         return false;
+    }
+
+    function setHash(bytes32[] hashArray) public {
+        uint numOfSigners = signer.length;
+        for (uint index = 0; index < numOfSigners; index++) {
+            if (tx.origin == signer[index]) {
+                dataHash = new bytes32[](hashArray.length);
+                for (uint i = 0; i < hashArray.length; i++) {
+                    dataHash[i] = hashArray[i];
+                }
+                AddHashLog(RETURN_CODE_SUCCESS, tx.origin);
+                return;
+            }
+        }
+        AddHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
+        return;
     }
 
     function addExtraValue(bytes32 extraValue) public returns (bool) {
