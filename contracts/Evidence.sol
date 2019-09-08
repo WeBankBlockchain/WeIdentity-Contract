@@ -51,7 +51,9 @@ contract Evidence {
         uint numOfHashParts = hashValue.length;
         uint index;
         for (index = 0; index < numOfHashParts; index++) {
-            dataHash.push(hashValue[index]);
+            if (hashValue[index] != bytes32(0)) {
+                dataHash.push(hashValue[index]);
+            }
         }
         uint numOfSigners = signerValue.length;
         for (index = 0; index < numOfSigners; index++) {
@@ -122,7 +124,7 @@ contract Evidence {
     {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
-            if (tx.origin == signer[index]) {
+            if (tx.origin == signer[index] && v[index] == uint8(0)) {
                 r[index] = rValue;
                 s[index] = sValue;
                 v[index] = vValue;
@@ -138,6 +140,7 @@ contract Evidence {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
             if (tx.origin == signer[index]) {
+                if (dataHash.length == 0 || (dataHash.length > 0 && dataHash[0] == bytes32(0)))
                 dataHash = new bytes32[](hashArray.length);
                 for (uint i = 0; i < hashArray.length; i++) {
                     dataHash[i] = hashArray[i];
