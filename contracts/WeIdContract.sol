@@ -22,13 +22,19 @@ contract WeIdContract {
 
     mapping(address => uint) changed;
 
+    // Authorization related functions
+    mapping(address => mapping(address => bool)) authorized;
+    mapping(address => bool) selfRevoked;
+
     modifier onlyOwner(address identity, address actor) {
-        require (actor == identity);
+        require ((actor == identity && selfRevoked[actor] == false) || authorized[identity][actor] == true);
         _;
     }
 
     bytes32 constant private WEID_KEY_CREATED = "created";
     bytes32 constant private WEID_KEY_AUTHENTICATION = "/weId/auth";
+    uint constant private WEID_AUTHORIZE_ADD = 0;
+    uint constant private WEID_AUTHORIZE_REVOKE = 1;
 
     event WeIdAttributeChanged(
         address indexed identity,
@@ -37,6 +43,32 @@ contract WeIdContract {
         uint previousBlock,
         int updated
     );
+
+    event WeIdAuthorize(
+        uint type,
+        address from,
+        address to,
+        uint currentBlock
+    )
+
+    function addAuthorize(address to) public onlyOwner(to, msg.sender) {
+        // The first call will require strict ownership
+        if (msg.sender == to) {
+            selfRevoked[msg.sender] = true;
+        } else {
+            authorized[msg.sender][to] = true;
+        }
+        WeIdAuthorize(WEID_AUTHORIZE_ADD, msg.sender, to, block.number);
+    }
+
+    funciton revokeAuthorize(address to) public onlyOwner(to, msg.sender) {
+        if (msg.sender == to) {
+            selfRevoked[msg.sender] = false;
+        } else {
+            authorized[msg.sender][to] = false;
+        }
+        WeIdAuthorize(WEID_AUTHORIZE_REVOKE, msg.sender, to, block.number);
+    }
 
     function getLatestRelatedBlock(
         address identity
