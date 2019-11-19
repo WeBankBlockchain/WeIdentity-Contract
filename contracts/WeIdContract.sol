@@ -26,11 +26,6 @@ contract WeIdContract {
 
     mapping(address => uint) changed;
 
-    modifier onlyOwner(address identity, address actor) {
-        require weIdAuthorize.isAlternateValid(identity, actor);
-        _;
-    }
-
     bytes32 constant private WEID_KEY_CREATED = "created";
     bytes32 constant private WEID_KEY_AUTHENTICATION = "/weId/auth";
 
@@ -64,8 +59,10 @@ contract WeIdContract {
         int updated
     )
         public
-        onlyOwner(identity, msg.sender)
     {
+        if (!weIdAuthorize.isAlternateValid(identity, msg.sender)) {
+            return;
+        }
         WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
         WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
         changed[identity] = block.number;
@@ -77,9 +74,11 @@ contract WeIdContract {
         bytes value, 
         int updated
     ) 
-        public 
-        onlyOwner(identity, msg.sender)
+        public
     {
+        if (!weIdAuthorize.isAlternateValid(identity, msg.sender)) {
+            return;
+        }
     	WeIdAttributeChanged(identity, key, value, changed[identity], updated);
         changed[identity] = block.number;
     }

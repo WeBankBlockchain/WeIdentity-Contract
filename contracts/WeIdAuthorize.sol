@@ -24,13 +24,16 @@ contract WeIdAuthorize {
     mapping(address => mapping(address => bool)) alternate;
     mapping(address => bool) selfRevoked;
 
+    uint constant private WEID_AUTHORIZE_ADD = 0;
+    uint constant private WEID_AUTHORIZE_REVOKE = 1;
+
     event WeIdAlternate(
-        uint type,
+        uint operation,
         address sender,
         address original,
         address candidate,
         uint currentBlock
-    )
+    );
 
     /**
      * Add an alternate - candidate address - to the original address.
@@ -73,6 +76,9 @@ contract WeIdAuthorize {
             return false;
         }
         if (original != candidate && alternate[original][candidate] == false) {
+            return false;
+        }
+        if (0x0 == original || 0x0 == candidate) {
             return false;
         }
         return true;
