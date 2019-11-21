@@ -1,6 +1,6 @@
 pragma solidity ^0.4.4;
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       CopyrightÂ© (2018-2019) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -36,6 +36,7 @@ contract Evidence {
     uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
     event AddSignatureLog(uint retCode, address signer, bytes32 r, bytes32 s, uint8 v);
     event AddExtraContentLog(uint retCode, address sender, bytes32 extraContent);
+    event AddHashLog(uint retCode, address signer);
 
     function Evidence(
         bytes32[] hashValue,
@@ -50,15 +51,26 @@ contract Evidence {
         uint numOfHashParts = hashValue.length;
         uint index;
         for (index = 0; index < numOfHashParts; index++) {
-            dataHash.push(hashValue[index]);
+            if (hashValue[index] != bytes32(0)) {
+                dataHash.push(hashValue[index]);
+            }
         }
         uint numOfSigners = signerValue.length;
         for (index = 0; index < numOfSigners; index++) {
             signer.push(signerValue[index]);
         }
-        r.push(rValue);
-        s.push(sValue);
-        v.push(vValue);
+        // Init signature fields - should always be of the same size as signer array
+        for (index = 0; index < numOfSigners; index++) {
+            if (tx.origin == signer[index]) {
+                r.push(rValue);
+                s.push(sValue);
+                v.push(vValue);
+            } else {
+                r.push(bytes32(0));
+                s.push(bytes32(0));
+                v.push(uint8(0));
+            }
+        }
         uint numOfExtraValue = extraValue.length;
         for (index = 0; index < numOfExtraValue; index++) {
             extraContent.push(extraValue[index]);
@@ -112,17 +124,33 @@ contract Evidence {
     {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
-            if (tx.origin == signer[index]) {
-                signer.push(tx.origin);
-                r.push(rValue);
-                s.push(sValue);
-                v.push(vValue);
+            if (tx.origin == signer[index] && v[index] == uint8(0)) {
+                r[index] = rValue;
+                s[index] = sValue;
+                v[index] = vValue;
                 AddSignatureLog(RETURN_CODE_SUCCESS, tx.origin, rValue, sValue, vValue);
                 return true;
             }
         }
         AddSignatureLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, rValue, sValue, vValue);
         return false;
+    }
+
+    function setHash(bytes32[] hashArray) public {
+        uint numOfSigners = signer.length;
+        for (uint index = 0; index < numOfSigners; index++) {
+            if (tx.origin == signer[index]) {
+                if (dataHash.length == 0 || (dataHash.length > 0 && dataHash[0] == bytes32(0)))
+                dataHash = new bytes32[](hashArray.length);
+                for (uint i = 0; i < hashArray.length; i++) {
+                    dataHash[i] = hashArray[i];
+                }
+                AddHashLog(RETURN_CODE_SUCCESS, tx.origin);
+                return;
+            }
+        }
+        AddHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
+        return;
     }
 
     function addExtraValue(bytes32 extraValue) public returns (bool) {
