@@ -140,7 +140,6 @@ contract Evidence {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
             if (tx.origin == signer[index]) {
-                if (dataHash.length == 0 || (dataHash.length > 0 && dataHash[0] == bytes32(0)))
                 dataHash = new bytes32[](hashArray.length);
                 for (uint i = 0; i < hashArray.length; i++) {
                     dataHash[i] = hashArray[i];

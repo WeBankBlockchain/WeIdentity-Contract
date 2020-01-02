@@ -1,3 +1,17 @@
+### V1.2.12 (2020-01-2)
+* 新增
+1. CPT合约支持零知识证明的credential template的读写。
+
+* 修正：
+1. 解决了Evidence合约里setHash的bug。
+
+* Added:
+1. support credential template in CptController contract.
+
+* Bugfixes:
+1. Fix bug of setHash() method in Evidence contract.
+
+
 ### V1.2.3 (2019-06-27)
 * 修正：
 1. 修改了weIdContract的合约格式。
@@ -11,7 +25,7 @@
 
 ### V1.2.2 (2019-05-21)
 * 新增：
-1. WeIdContract新增createWeId方法，支持在创建weidentity did时设置公钥
+1. WeIdContract新增createWeId方法，支持在创建WeIdentity DID时设置公钥
 
 * Added:
 1. WeIdContract now has a new createWeId() method to automatically set public keys and authentication type.

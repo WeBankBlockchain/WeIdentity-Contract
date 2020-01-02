@@ -267,5 +267,34 @@ contract CptController {
             dynamicBytes32Array[i] = staticBytes32Array[i];
         }
         return dynamicBytes32Array;
-    } 
+    }
+
+    //store the cptId and blocknumber
+    mapping (uint => uint) credentialTemplateStored;
+    event CredentialTemplate(
+        uint cptId,
+        bytes credentialPublicKey,
+        bytes credentialProof
+    );
+
+    function putCredentialTemplate(
+        uint cptId,
+        bytes credentialPublicKey,
+        bytes credentialProof
+    )
+        public
+    {
+        CredentialTemplate(cptId, credentialPublicKey, credentialProof);
+        credentialTemplateStored[cptId] = block.number;
+    }
+
+    function getCredentialTemplateBlock(
+        uint cptId
+    )
+        public
+        constant
+        returns(uint)
+    {
+        return credentialTemplateStored[cptId];
+    }
 }
