@@ -27,16 +27,13 @@ contract EvidenceContract {
     string constant private ATTRIB_KEY_SIGNINFO = "info";
     string constant private ATTRIB_KEY_EXTRA = "extra";
 
-    // string constant private EVIDENCE_REVOKE = "revoked";
-
     // Error codes
     uint256 constant private RETURN_CODE_SUCCESS = 0;
     uint256 constant private RETURN_CODE_FAILURE_NOT_EXIST = 500600;
-    uint256 constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
 
     // Both hash and signer are used as identification key
     event EvidenceAttributeChanged(
-        string indexed hash,
+        string hash,
         address signer,
         string key,
         string value,
@@ -100,7 +97,7 @@ contract EvidenceContract {
         return false;
     }
 
-    function isEqualString(string a, string b) public constant returns (bool) {
+    function isEqualString(string a, string b) private constant returns (bool) {
         if (bytes(a).length != bytes(b).length) {
             return false;
         } else {
