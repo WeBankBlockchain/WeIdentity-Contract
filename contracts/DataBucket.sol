@@ -2,7 +2,7 @@ pragma solidity ^0.4.4;
 pragma experimental ABIEncoderV2;
 
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018-2020) WeBank Co., Ltd.
  *
  *       This file is part of weidentity-contract.
  *
@@ -27,7 +27,7 @@ contract DataBucket {
         string hash;         // the hash
         address owner;        // owner for hash
         address[] useAddress; // the user list for use this hash
-        bool isUse;           // the hash is be useed
+        bool isUsed;           // the hash is be useed
         uint256 index;        // the hash index in hashList
         uint256 timestamp;    // the first time for create hash
         mapping(bytes32 => string) kv; //the mapping for store the key--value
@@ -37,9 +37,9 @@ contract DataBucket {
     
     uint8 constant private SUCCESS = 100;
     uint8 constant private NO_PERMISSION = 101;
-    uint8 constant private THE_HASH_DOES_NOT_EXISTS = 102;
-    uint8 constant private THE_HASH_USEING = 103;
-    uint8 constant private THE_HASH_UNUSEING = 104;
+    uint8 constant private THE_HASH_DOES_NOT_EXIST = 102;
+    uint8 constant private THE_HASH_IS_USED = 103;
+    uint8 constant private THE_HASH_IS_NOT_USED = 104;
     
     /**
      * put the key-value into hashData.
@@ -49,8 +49,14 @@ contract DataBucket {
      * @param value the value of the key
      * @return code the code for result
      */ 
-    function put(string hash, bytes32 key, string value) public 
-    returns (uint8 code) {
+    function put(
+        string hash, 
+        bytes32 key, 
+        string value
+    ) 
+        public 
+        returns (uint8 code) 
+    {
         DataStruct storage data = hashData[hash];
         //the first put hash
         if (data.owner == address(0x0)) {
@@ -76,7 +82,11 @@ contract DataBucket {
      * @param data the data for hash
      * 
      */ 
-    function pushHash(DataStruct storage data) internal {
+    function pushHash(
+        DataStruct storage data
+    ) 
+        internal 
+    {
         // find the first empty index.
         int8 emptyIndex = -1;
         for (uint8 i = 0; i < hashList.length; i++) {
@@ -104,11 +114,16 @@ contract DataBucket {
      * @param key get the value by this key
      * @return value the value
      */ 
-    function get(string hash , bytes32 key) public view
-    returns (uint8 code, string value) {
+    function get(
+        string hash, 
+        bytes32 key
+    ) 
+        public view
+        returns (uint8 code, string value) 
+    {
         DataStruct storage data = hashData[hash];
         if (data.owner == address(0x0)) {
-            return (THE_HASH_DOES_NOT_EXISTS, "");
+            return (THE_HASH_DOES_NOT_EXIST, "");
         }
         return (SUCCESS, data.kv[key]);
     }
@@ -120,11 +135,16 @@ contract DataBucket {
      * @param key the key
      * @return the code for result
      */ 
-    function remove(string hash, bytes32 key) public 
-    returns (uint8 code) {
+    function remove(
+        string hash, 
+        bytes32 key
+    ) 
+        public 
+        returns (uint8 code) 
+    {
         DataStruct memory data = hashData[hash];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXISTS;
+            return THE_HASH_DOES_NOT_EXIST;
         }
         if (key ==  bytes32("$admin")) {
             delete hashList[data.index];
@@ -134,8 +154,8 @@ contract DataBucket {
         if (msg.sender != data.owner) {
             return NO_PERMISSION;
         }
-        if (data.isUse) {
-            return THE_HASH_USEING;
+        if (data.isUsed) {
+            return THE_HASH_IS_USED;
         }
         if (key == bytes32(0x0)) {
             delete hashList[data.index];
@@ -150,15 +170,19 @@ contract DataBucket {
      * enable the hash.
      * @param hash the hash
      */
-    function enableHash(string hash) public 
-    returns (uint8) {
+    function enableHash(
+        string hash
+    ) 
+        public 
+        returns (uint8) 
+    {
         DataStruct storage data = hashData[hash];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXISTS;
+            return THE_HASH_DOES_NOT_EXIST;
         }
         
-        if (!data.isUse) {
-            data.isUse = true;
+        if (!data.isUsed) {
+            data.isUsed = true;
         }
         pushUseAddress(data);
         return SUCCESS;
@@ -167,7 +191,11 @@ contract DataBucket {
     /**
      * push the user into useAddress.
      */ 
-    function pushUseAddress(DataStruct storage data) internal {
+    function pushUseAddress(
+        DataStruct storage data
+    ) 
+        internal 
+    {
         int8 emptyIndex = -1;
         for (uint8 i = 0; i < data.useAddress.length; i++) {
             if (data.useAddress[i] == msg.sender) {
@@ -187,7 +215,11 @@ contract DataBucket {
     /**
      * remove the use Address from DataStruct.
      */ 
-    function removeUseAddress(DataStruct storage data) internal {
+    function removeUseAddress(
+        DataStruct storage data
+    ) 
+        internal 
+    {
         uint8 index = 0;
         for (uint8 i = 0; i < data.useAddress.length; i++) {
             if (data.useAddress[i] == msg.sender) {
@@ -199,9 +231,15 @@ contract DataBucket {
     }
     
     /**
-     * true is THE_HASH_USEING, false THE_HASH_UNUSEING.
+     * true is THE_HASH_IS_USED, false THE_HASH_IS_NOT_USED.
      */
-    function hasUse(DataStruct storage data) internal view returns (bool){
+    function hasUse(
+        DataStruct storage data
+    ) 
+        internal 
+        view 
+        returns (bool)
+    {
         for (uint8 i = 0; i < data.useAddress.length; i++) {
             if (data.useAddress[i] != address(0x0)) {
                 return true;
@@ -214,25 +252,35 @@ contract DataBucket {
      * disable the hash
      * @param hash the hash
      */
-    function disableHash(string hash) public 
-    returns (uint8) {
+    function disableHash(
+        string hash
+    ) 
+        public 
+        returns (uint8) 
+    {
         DataStruct storage data = hashData[hash];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXISTS;
+            return THE_HASH_DOES_NOT_EXIST;
         }
-        if(!data.isUse) {
-            return THE_HASH_UNUSEING;
+        if (!data.isUsed) {
+            return THE_HASH_IS_NOT_USED;
         }
         removeUseAddress(data);
-        data.isUse = hasUse(data);
+        data.isUsed = hasUse(data);
         return SUCCESS;
     }
     
     /**
      * get all hash by page.
      */ 
-    function getAllHash(uint8 offset, uint8 num) public view
-    returns (string[] hashs, address[] owners, uint256[] timestamps, uint8 nextIndex) {
+    function getAllHash(
+        uint8 offset, 
+        uint8 num
+    ) 
+        public 
+        view
+        returns (string[] hashs, address[] owners, uint256[] timestamps, uint8 nextIndex) 
+    {
         hashs = new string[](num);
         owners = new address[](num);
         timestamps = new uint256[](num);
@@ -255,7 +303,14 @@ contract DataBucket {
         return (hashs, owners, timestamps, next);
     }
     
-    function isEqualString(string a, string b) private constant returns (bool) {
+    function isEqualString(
+        string a, 
+        string b
+    ) 
+        private 
+        constant 
+        returns (bool) 
+    {
         if (bytes(a).length != bytes(b).length) {
             return false;
         } else {
