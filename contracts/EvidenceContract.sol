@@ -43,6 +43,16 @@ contract EvidenceContract {
         uint256 previousBlock
     );
 
+    event EvidenceAttributeChangedWithExtraKey(
+        string hash,
+        address signer,
+        string key,
+        string value,
+        uint256 updated,
+        uint256 previousBlock,
+        string extraKey
+    );
+
     function getLatestRelatedBlock(
         string hash
     ) 
@@ -87,7 +97,7 @@ contract EvidenceContract {
      * hash can be find by extrarKey, extrarKey is business ID in business system.
      * This allows append operation from other signer onto a same hash, so no permission check.
      */
-    function createEvidence(
+    function createEvidenceWithExtraKey(
         string hash,
         string sig,
         string extra,
@@ -96,8 +106,8 @@ contract EvidenceContract {
     )
     public
     {
-        EvidenceAttributeChanged(hash, msg.sender, ATTRIB_KEY_SIGNINFO, sig, updated, changed[hash]);
-        EvidenceAttributeChanged(hash, msg.sender, ATTRIB_KEY_EXTRA, extra, updated, changed[hash]);
+        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_SIGNINFO, sig, updated, changed[hash], extraKey);
+        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_EXTRA, extra, updated, changed[hash], extraKey);
         changed[hash] = block.number;
         extraKeyMapping[extraKey] = hash;
     }
