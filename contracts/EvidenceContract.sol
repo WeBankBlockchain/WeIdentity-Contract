@@ -53,7 +53,7 @@ contract EvidenceContract {
         return changed[hash];
     }
 
-    function getLatestRelatedBlockByExtraKey(
+    function getLatestRelatedBlockWithExtraKey(
         string extraKey
     )
     public
