@@ -22,6 +22,8 @@ contract EvidenceContract {
 
     // block number map, hash as key
     mapping(string => uint256) changed;
+    // hash map, extra id as key
+    mapping(string => string) extraKeyMapping;
 
     // Attribute keys
     string constant private ATTRIB_KEY_SIGNINFO = "info";
@@ -41,6 +43,16 @@ contract EvidenceContract {
         uint256 previousBlock
     );
 
+    event EvidenceAttributeChangedWithExtraKey(
+        string hash,
+        address signer,
+        string key,
+        string value,
+        uint256 updated,
+        uint256 previousBlock,
+        string extraKey
+    );
+
     function getLatestRelatedBlock(
         string hash
     ) 
@@ -49,6 +61,16 @@ contract EvidenceContract {
         returns (uint256) 
     {
         return changed[hash];
+    }
+
+    function getLatestRelatedBlockWithExtraKey(
+        string extraKey
+    )
+    public
+    constant
+    returns (uint256)
+    {
+        return changed[extraKeyMapping[extraKey]];
     }
 
     /**
@@ -67,6 +89,27 @@ contract EvidenceContract {
         EvidenceAttributeChanged(hash, msg.sender, ATTRIB_KEY_SIGNINFO, sig, updated, changed[hash]);
         EvidenceAttributeChanged(hash, msg.sender, ATTRIB_KEY_EXTRA, extra, updated, changed[hash]);
         changed[hash] = block.number;
+    }
+
+    /**
+     * Create evidence by extra key. Here, hash value is the key; signInfo is the base64 signature;
+     * and extra is the compact json of blob: {"credentialId":"aacc1122-324b.."};
+     * hash can be find by extrarKey, extrarKey is business ID in business system.
+     * This allows append operation from other signer onto a same hash, so no permission check.
+     */
+    function createEvidenceWithExtraKey(
+        string hash,
+        string sig,
+        string extra,
+        uint256 updated,
+        string extraKey
+    )
+    public
+    {
+        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_SIGNINFO, sig, updated, changed[hash], extraKey);
+        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_EXTRA, extra, updated, changed[hash], extraKey);
+        changed[hash] = block.number;
+        extraKeyMapping[extraKey] = hash;
     }
 
     /**
