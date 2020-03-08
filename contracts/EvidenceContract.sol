@@ -43,16 +43,6 @@ contract EvidenceContract {
         uint256 previousBlock
     );
 
-    event EvidenceAttributeChangedWithExtraKey(
-        string hash,
-        address signer,
-        string key,
-        string value,
-        uint256 updated,
-        uint256 previousBlock,
-        string extraKey
-    );
-
     function getLatestRelatedBlock(
         string hash
     ) 
@@ -63,15 +53,6 @@ contract EvidenceContract {
         return changed[hash];
     }
 
-    function getLatestRelatedBlockWithExtraKey(
-        string extraKey
-    )
-    public
-    constant
-    returns (uint256)
-    {
-        return changed[extraKeyMapping[extraKey]];
-    }
 
     /**
      * Create evidence. Here, hash value is the key; signInfo is the base64 signature;
@@ -106,9 +87,7 @@ contract EvidenceContract {
     )
     public
     {
-        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_SIGNINFO, sig, updated, changed[hash], extraKey);
-        EvidenceAttributeChangedWithExtraKey(hash, msg.sender, ATTRIB_KEY_EXTRA, extra, updated, changed[hash], extraKey);
-        changed[hash] = block.number;
+        createEvidence(hash, sig, extra, updated);
         extraKeyMapping[extraKey] = hash;
     }
 
@@ -146,5 +125,15 @@ contract EvidenceContract {
         } else {
             return keccak256(a) == keccak256(b);
         }
+    }
+
+    function getHashByExtraKey(
+        string extraKey
+    )
+        public
+        constant
+        returns (string)
+    {
+        return extraKeyMapping[extraKey];
     }
 }
