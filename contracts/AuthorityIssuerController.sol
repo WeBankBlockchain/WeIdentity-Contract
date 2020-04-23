@@ -134,4 +134,14 @@ contract AuthorityIssuerController {
     {
         return authorityIssuerData.isAuthorityIssuer(addr);
     }
+
+    function getAddressFromName(
+        bytes32 name
+    )
+        public
+        constant
+        returns (address)
+    {
+        return authorityIssuerData.getAddressFromName(name);
+    }
 }
