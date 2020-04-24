@@ -43,7 +43,7 @@ contract AuthorityIssuerData {
 
     mapping (address => AuthorityIssuer) private authorityIssuerMap;
     address[] private authorityIssuerArray;
-    mapping (bytes32 => bool) private uniqueNameMap;
+    mapping (bytes32 => address) private uniqueNameMap;
 
     RoleController private roleController;
 
@@ -89,7 +89,7 @@ contract AuthorityIssuerData {
         AuthorityIssuer memory authorityIssuer = AuthorityIssuer(attribBytes32, attribInt, accValue);
         authorityIssuerMap[addr] = authorityIssuer;
         authorityIssuerArray.push(addr);
-        uniqueNameMap[attribBytes32[0]] = true;
+        uniqueNameMap[attribBytes32[0]] = addr;
         return RETURN_CODE_SUCCESS;
     }
 
@@ -106,7 +106,7 @@ contract AuthorityIssuerData {
             return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
         roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
-        uniqueNameMap[authorityIssuerMap[addr].attribBytes32[0]] = false;
+        uniqueNameMap[authorityIssuerMap[addr].attribBytes32[0]] = address(0x0);
         delete authorityIssuerMap[addr];
         uint datasetLength = authorityIssuerArray.length;
         for (uint index = 0; index < datasetLength; index++) {
@@ -172,6 +172,19 @@ contract AuthorityIssuerData {
         public
         constant
         returns (bool) 
+    {
+        if (uniqueNameMap[name] == address(0x0)) {
+            return false;
+        }
+        return true;
+    }
+
+    function getAddressFromName(
+        bytes32 name
+    )
+        public
+        constant
+        returns (address)
     {
         return uniqueNameMap[name];
     }

@@ -62,6 +62,19 @@ contract WeIdContract {
         changed[identity] = block.number;
     }
 
+    function delegateCreateWeId(
+        address identity,
+        bytes auth,
+        bytes created,
+        int updated
+    )
+        public
+    {
+        WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
+        WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
+        changed[identity] = block.number;
+    }
+
     function setAttribute(
         address identity, 
         bytes32 key, 
