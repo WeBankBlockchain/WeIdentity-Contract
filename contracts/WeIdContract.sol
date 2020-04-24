@@ -87,6 +87,18 @@ contract WeIdContract {
     	WeIdAttributeChanged(identity, key, value, changed[identity], updated);
         changed[identity] = block.number;
     }
+
+    function delegateSetAttribute(
+        address identity,
+        bytes32 key,
+        bytes value,
+        int updated
+    )
+        public
+    {
+        WeIdAttributeChanged(identity, key, value, changed[identity], updated);
+        changed[identity] = block.number;
+    }
     
     function isIdentityExist(
         address identity
