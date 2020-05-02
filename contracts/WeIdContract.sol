@@ -18,7 +18,11 @@ pragma solidity ^0.4.4;
  *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import "./RoleController.sol";
+
 contract WeIdContract {
+
+    RoleController private roleController;
 
     mapping(address => uint) changed;
 
@@ -29,6 +33,15 @@ contract WeIdContract {
 
     bytes32 constant private WEID_KEY_CREATED = "created";
     bytes32 constant private WEID_KEY_AUTHENTICATION = "/weId/auth";
+
+    // Constructor - Role controller is required in delegate calls
+    function WeIdContract(
+        address roleControllerAddress
+    )
+        public
+    {
+        roleController = RoleController(roleControllerAddress);
+    }
 
     event WeIdAttributeChanged(
         address indexed identity,
@@ -70,9 +83,11 @@ contract WeIdContract {
     )
         public
     {
-        WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
-        WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
-        changed[identity] = block.number;
+        if (roleController.checkPermission(msg.sender, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
+            WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
+            changed[identity] = block.number;
+        }
     }
 
     function setAttribute(
@@ -96,8 +111,10 @@ contract WeIdContract {
     )
         public
     {
-        WeIdAttributeChanged(identity, key, value, changed[identity], updated);
-        changed[identity] = block.number;
+        if (roleController.checkPermission(msg.sender, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            WeIdAttributeChanged(identity, key, value, changed[identity], updated);
+            changed[identity] = block.number;
+        }
     }
     
     function isIdentityExist(
