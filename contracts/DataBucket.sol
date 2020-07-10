@@ -30,16 +30,22 @@ contract DataBucket {
         bool isUsed;           // the hash is be useed
         uint256 index;        // the hash index in hashList
         uint256 timestamp;    // the first time for create hash
-        mapping(bytes32 => string) kv; //the mapping for store the key--value
+        mapping(bytes32 => string) extra; //the mapping for store the key--value
     }
     
     mapping(string => DataStruct) hashData; // hash-->DataStruct
+    
+    address owner;
     
     uint8 constant private SUCCESS = 100;
     uint8 constant private NO_PERMISSION = 101;
     uint8 constant private THE_HASH_DOES_NOT_EXIST = 102;
     uint8 constant private THE_HASH_IS_USED = 103;
     uint8 constant private THE_HASH_IS_NOT_USED = 104;
+    
+    function DataBucket() public {
+        owner = msg.sender;
+    }
     
     /**
      * put the key-value into hashData.
@@ -64,14 +70,14 @@ contract DataBucket {
             data.owner = msg.sender;
             data.timestamp = now;
             pushHash(data);
-            data.kv[key] = value;
+            data.extra[key] = value;
             return SUCCESS;
         } else {
             // no permission
             if (data.owner != msg.sender) {
                  return NO_PERMISSION;
             }
-            data.kv[key] = value;
+            data.extra[key] = value;
             return SUCCESS;
         }
     }
@@ -125,7 +131,7 @@ contract DataBucket {
         if (data.owner == address(0x0)) {
             return (THE_HASH_DOES_NOT_EXIST, "");
         }
-        return (SUCCESS, data.kv[key]);
+        return (SUCCESS, data.extra[key]);
     }
     
     /**
@@ -135,7 +141,7 @@ contract DataBucket {
      * @param key the key
      * @return the code for result
      */ 
-    function remove(
+    function removeExtraItem(
         string hash, 
         bytes32 key
     ) 
@@ -145,25 +151,46 @@ contract DataBucket {
         DataStruct memory data = hashData[hash];
         if (data.owner == address(0x0)) {
             return THE_HASH_DOES_NOT_EXIST;
+        } else if (msg.sender != data.owner) {
+            return NO_PERMISSION;
+        } else if (data.isUsed) {
+            return THE_HASH_IS_USED;
+        } else {
+           delete hashData[hash].extra[key];
+           return SUCCESS;
         }
-        if (key ==  bytes32("$admin")) {
+    }
+    
+    /**
+     * remove hash when the key is null, others remove the key
+     * 
+     * @param hash the hash
+     * @param force force delete
+     * @return the code for result
+     */ 
+    function removeDataBucketItem(
+        string hash,
+        bool force
+    ) 
+        public 
+        returns (uint8 code) 
+    {
+        DataStruct memory data = hashData[hash];
+        if (data.owner == address(0x0)) {
+            return THE_HASH_DOES_NOT_EXIST;
+        } else if (msg.sender == owner && force) {
+            delete hashList[data.index];
+            delete hashData[hash];
+            return SUCCESS;
+        } else if (msg.sender != data.owner) {
+            return NO_PERMISSION;
+        } else if (data.isUsed) {
+            return THE_HASH_IS_USED;
+        } else {
             delete hashList[data.index];
             delete hashData[hash];
             return SUCCESS;
         }
-        if (msg.sender != data.owner) {
-            return NO_PERMISSION;
-        }
-        if (data.isUsed) {
-            return THE_HASH_IS_USED;
-        }
-        if (key == bytes32(0x0)) {
-            delete hashList[data.index];
-            delete hashData[hash];
-        } else {
-            delete hashData[hash].kv[key];
-        }
-        return SUCCESS;
     }
     
     /**
@@ -316,5 +343,32 @@ contract DataBucket {
         } else {
             return keccak256(a) == keccak256(b);
         }
+    }
+    
+    /**
+     * update the owner of hash
+     */
+    function updateHashOwner(
+        string hash,
+        address newOwner
+    ) 
+        public 
+        returns (uint8) 
+    {
+        // check the hash is exist
+        DataStruct storage data = hashData[hash];
+        if (data.owner == address(0x0)) {
+            return THE_HASH_DOES_NOT_EXIST;
+        }
+        
+        // check the owner
+        if (msg.sender != owner) {
+            return NO_PERMISSION;
+        }
+        
+        if (newOwner != address(0x0)) {
+            data.owner = newOwner;
+        }
+        return SUCCESS;
     }
 }
