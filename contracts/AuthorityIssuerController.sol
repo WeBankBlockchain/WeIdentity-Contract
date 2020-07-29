@@ -57,19 +57,21 @@ contract AuthorityIssuerController {
     )
         public
     {
-        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
-            return;
-        }
         uint result = authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
         AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
     }
+    
+    function recognizeAuthorityIssuer(address addr) public {
+        uint result = authorityIssuerData.recognizeAuthorityIssuer(addr);
+        AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
+    }
 
-    function removeAuthorityIssuer(
-        address addr
-    ) 
-        public 
-    {
+    function deRecognizeAuthorityIssuer(address addr) public {
+        uint result = authorityIssuerData.deRecognizeAuthorityIssuer(addr);
+        AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
+    }
+
+    function removeAuthorityIssuer(address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
             AuthorityIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
