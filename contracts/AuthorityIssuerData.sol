@@ -38,6 +38,7 @@ contract AuthorityIssuerData {
         // [0]: name, [1]: desc, [2-11]: extra string
         bytes32[16] attribBytes32;
         // [0]: create date, [1]: update date, [2-11]: extra int
+        // [15]: flag for recognition status (0: unrecognized, 1: recognized)
         int[16] attribInt;
         bytes accValue;
     }
@@ -102,7 +103,9 @@ contract AuthorityIssuerData {
         if (authorityIssuerMap[addr].attribBytes32[0] == bytes32(0)) {
             return RETURN_CODE_FAILURE_NOT_EXIST;
         }
+        // Set role and flag
         roleController.addRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+        authorityIssuerMap[addr].attribInt[15] = int(1);
         return RETURN_CODE_SUCCESS;
     }
 
@@ -110,7 +113,9 @@ contract AuthorityIssuerData {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
             return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
+        // Remove role and flag
         roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+        authorityIssuerMap[addr].attribInt[15] = int(0);
         return RETURN_CODE_SUCCESS;
     }
 

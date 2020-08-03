@@ -47,9 +47,9 @@ contract CptData {
     struct Cpt {
         //store the weid address of cpt publisher
         address publisher;
-        //intArray[0] store cpt version, int[1] store created, int[2] store updated and left are  preserved int fields
+        // [0]: cpt version, [1]: created, [2]: updated, [3]: the CPT ID
         int[8] intArray;
-        //all are  preserved bytes32 fields
+        // [0]: desc
         bytes32[8] bytes32Array;
         //store json schema
         bytes32[128] jsonSchemaArray;
@@ -58,6 +58,7 @@ contract CptData {
     }
 
     mapping (uint => Cpt) private cptMap;
+    uint[] private cptIdList;
 
     function putCpt(
         uint cptId, 
@@ -74,6 +75,7 @@ contract CptData {
     {
         Signature memory cptSignature = Signature({v: cptV, r: cptR, s: cptS});
         cptMap[cptId] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
+        cptIdList.push(cptId);
         return true;
     }
 
@@ -195,5 +197,13 @@ contract CptData {
         } else {
             return false;
         }
+    }
+
+    function getDatasetLength() public constant returns (uint) {
+        return cptIdList.length;
+    }
+
+    function getCptIdFromIndex(uint index) public constant returns (uint) {
+        return cptIdList[index];
     }
 }
