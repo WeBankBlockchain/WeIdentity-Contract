@@ -26,6 +26,12 @@ contract WeIdContract {
 
     mapping(address => uint) changed;
 
+    uint firstBlockNum;
+
+    uint lastBlockNum;
+
+    mapping(uint => uint) blockAfterLink;
+
     modifier onlyOwner(address identity, address actor) {
         require (actor == identity);
         _;
@@ -41,6 +47,8 @@ contract WeIdContract {
         public
     {
         roleController = RoleController(roleControllerAddress);
+        firstBlockNum = block.number;
+        lastBlockNum = firstBlockNum;
     }
 
     event WeIdAttributeChanged(
@@ -51,6 +59,12 @@ contract WeIdContract {
         int updated
     );
 
+    event WeIdHistoryEvent(
+        address indexed identity,
+        uint previousBlock,
+        int created
+    );
+
     function getLatestRelatedBlock(
         address identity
     ) 
@@ -59,6 +73,30 @@ contract WeIdContract {
         returns (uint) 
     {
         return changed[identity];
+    }
+
+    function getFirstBlockNum() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return firstBlockNum;
+    }
+
+    function getLatestBlockNum() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return lastBlockNum;
+    }
+
+    function getNextBlockNumByBlockNum(uint currentBlockNum) 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return blockAfterLink[currentBlockNum];
     }
 
     function createWeId(
@@ -73,6 +111,13 @@ contract WeIdContract {
         WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
         WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
         changed[identity] = block.number;
+        if (block.number > lastBlockNum) {
+            blockAfterLink[lastBlockNum] = block.number;
+        }
+        WeIdHistoryEvent(identity, lastBlockNum, updated);
+        if (block.number > lastBlockNum) {
+            lastBlockNum = block.number;
+        }
     }
 
     function delegateCreateWeId(
@@ -87,6 +132,13 @@ contract WeIdContract {
             WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
             WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
             changed[identity] = block.number;
+            if (block.number > lastBlockNum) {
+                blockAfterLink[lastBlockNum] = block.number;
+            }
+            WeIdHistoryEvent(identity, lastBlockNum, updated);
+            if (block.number > lastBlockNum) {
+                lastBlockNum = block.number;
+            }
         }
     }
 
@@ -99,7 +151,7 @@ contract WeIdContract {
         public 
         onlyOwner(identity, msg.sender)
     {
-    	WeIdAttributeChanged(identity, key, value, changed[identity], updated);
+        WeIdAttributeChanged(identity, key, value, changed[identity], updated);
         changed[identity] = block.number;
     }
 
@@ -116,7 +168,7 @@ contract WeIdContract {
             changed[identity] = block.number;
         }
     }
-    
+
     function isIdentityExist(
         address identity
     ) 
