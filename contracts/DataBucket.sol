@@ -371,4 +371,34 @@ contract DataBucket {
         }
         return SUCCESS;
     }
+
+    /**
+     * get use address by hash.
+     */ 
+    function getUserListByHash(
+        string hash,
+        uint8 offset, 
+        uint8 num
+    ) 
+        public 
+        view
+        returns (address[] users, uint8 nextIndex) 
+    {
+        users = new address[](num);
+        uint8 index = 0;
+        uint8 next = 0;
+        DataStruct memory data = hashData[hash];
+        for (uint8 i = offset; i < data.useAddress.length; i++) {
+            address user = data.useAddress[i];
+            if (user != address(0x0)) {
+                users[index] = user;
+                index++;
+                if (index == num && i != data.useAddress.length - 1) {
+                    next = i + 1;
+                    break;
+                }
+            }
+        }
+        return (users, next);
+    }
 }
