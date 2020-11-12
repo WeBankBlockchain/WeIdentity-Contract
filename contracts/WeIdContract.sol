@@ -29,6 +29,8 @@ contract WeIdContract {
     uint firstBlockNum;
 
     uint lastBlockNum;
+    
+    uint weIdCount = 0;
 
     mapping(uint => uint) blockAfterLink;
 
@@ -99,6 +101,14 @@ contract WeIdContract {
         return blockAfterLink[currentBlockNum];
     }
 
+    function getWeIdCount() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return weIdCount;
+    }
+
     function createWeId(
         address identity,
         bytes auth,
@@ -118,6 +128,7 @@ contract WeIdContract {
         if (block.number > lastBlockNum) {
             lastBlockNum = block.number;
         }
+        weIdCount++;
     }
 
     function delegateCreateWeId(
@@ -139,6 +150,7 @@ contract WeIdContract {
             if (block.number > lastBlockNum) {
                 lastBlockNum = block.number;
             }
+            weIdCount++;
         }
     }
 
