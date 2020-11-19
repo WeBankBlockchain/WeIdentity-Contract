@@ -34,13 +34,16 @@ contract CptController {
     // Default CPT version
     int constant private CPT_DEFAULT_VERSION = 1;
 
-    CptData private cptData;
     WeIdContract private weIdContract;
     RoleController private roleController;
 
     // Reserved for contract owner check
     address private internalRoleControllerAddress;
     address private owner;
+
+    // CPT and Policy data storage address separately
+    address private cptDataStorageAddress;
+    address private policyDataStorageAddress;
 
     function CptController(
         address cptDataAddress,
@@ -49,8 +52,19 @@ contract CptController {
         public
     {
         owner = msg.sender;
-        cptData = CptData(cptDataAddress);
         weIdContract = WeIdContract(weIdContractAddress);
+        cptDataStorageAddress = cptDataAddress;
+    }
+
+    function setPolicyData(
+        address policyDataAddress
+    )
+        public
+    {
+        if (msg.sender != owner || policyDataAddress == 0x0) {
+            return;
+        }
+        policyDataStorageAddress = policyDataAddress;
     }
 
     function setRoleController(
@@ -80,7 +94,7 @@ contract CptController {
         int cptVersion
     );
 
-    function registerCpt(
+    function registerCptInner(
         uint cptId,
         address publisher, 
         int[8] intArray, 
@@ -88,15 +102,17 @@ contract CptController {
         bytes32[128] jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
-        bytes32 s
+        bytes32 s,
+        address dataStorageAddress
     )
-        public
+        private
         returns (bool)
     {
         if (!weIdContract.isIdentityExist(publisher)) {
             RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
         }
+        CptData cptData = CptData(dataStorageAddress);
         if (cptData.isCptExist(cptId)) {
             RegisterCptRetLog(CPT_ALREADY_EXIST, cptId, 0);
             return false;
@@ -128,6 +144,69 @@ contract CptController {
             }
         }
 
+        intArray[0] = CPT_DEFAULT_VERSION;
+        cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
+
+        RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
+        return true;
+    }
+
+    function registerCpt(
+        uint cptId,
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    )
+        public
+        returns (bool)
+    {
+        return registerCptInner(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, cptDataStorageAddress);
+    }
+
+    function registerPolicy(
+        uint cptId,
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    )
+        public
+        returns (bool)
+    {
+        return registerCptInner(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, policyDataStorageAddress);
+    }
+
+    function registerCptInner(
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s,
+        address dataStorageAddress
+    ) 
+        private 
+        returns (bool) 
+    {
+        if (!weIdContract.isIdentityExist(publisher)) {
+            RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
+            return false;
+        }
+        CptData cptData = CptData(dataStorageAddress);
+
+        uint cptId = cptData.getCptId(publisher); 
+        if (cptId == 0) {
+            RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
+            return false;
+        }
         int cptVersion = CPT_DEFAULT_VERSION;
         intArray[0] = cptVersion;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
@@ -148,26 +227,10 @@ contract CptController {
         public 
         returns (bool) 
     {
-        if (!weIdContract.isIdentityExist(publisher)) {
-            RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
-            return false;
-        }
-
-        uint cptId = cptData.getCptId(publisher); 
-        if (cptId == 0) {
-            RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
-            return false;
-        }
-        int cptVersion = CPT_DEFAULT_VERSION;
-        intArray[0] = cptVersion;
-        cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
-
-        RegisterCptRetLog(0, cptId, cptVersion);
-        return true;
+        return registerCptInner(publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, cptDataStorageAddress);
     }
 
-    function updateCpt(
-        uint cptId, 
+    function registerPolicy(
         address publisher, 
         int[8] intArray, 
         bytes32[8] bytes32Array,
@@ -179,10 +242,28 @@ contract CptController {
         public 
         returns (bool) 
     {
+        return registerCptInner(publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, policyDataStorageAddress);
+    }
+
+    function updateCptInner(
+        uint cptId, 
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s,
+        address dataStorageAddress
+    ) 
+        private 
+        returns (bool) 
+    {
         if (!weIdContract.isIdentityExist(publisher)) {
             UpdateCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
         }
+        CptData cptData = CptData(dataStorageAddress);
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())
             && publisher != cptData.getCptPublisher(cptId)) {
             UpdateCptRetLog(NO_PERMISSION, 0, 0);
@@ -203,10 +284,43 @@ contract CptController {
         }
     }
 
-    function queryCpt(
-        uint cptId
+    function updateCpt(
+        uint cptId, 
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    )
+        public
+        returns (bool)
+    {
+        return updateCptInner(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, cptDataStorageAddress);
+    }
+
+    function updatePolicy(
+        uint cptId, 
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s
+    )
+        public
+        returns (bool)
+    {
+        return updateCptInner(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s, policyDataStorageAddress);
+    }
+
+    function queryCptInner(
+        uint cptId,
+        address dataStorageAddress
     ) 
-        public 
+        private 
         constant 
         returns (
         address publisher, 
@@ -217,20 +331,59 @@ contract CptController {
         bytes32 r, 
         bytes32 s)
     {
+        CptData cptData = CptData(dataStorageAddress);
         publisher = cptData.getCptPublisher(cptId);
-        intArray = getCptDynamicIntArray(cptId);
-        bytes32Array = getCptDynamicBytes32Array(cptId);
-        jsonSchemaArray = getCptDynamicJsonSchemaArray(cptId);
+        intArray = getCptDynamicIntArray(cptId, dataStorageAddress);
+        bytes32Array = getCptDynamicBytes32Array(cptId, dataStorageAddress);
+        jsonSchemaArray = getCptDynamicJsonSchemaArray(cptId, dataStorageAddress);
         (v, r, s) = cptData.getCptSignature(cptId);
     }
 
-    function getCptDynamicIntArray(
+    function queryCpt(
         uint cptId
+    ) 
+        public 
+        constant 
+        returns 
+    (
+        address publisher, 
+        int[] intArray, 
+        bytes32[] bytes32Array,
+        bytes32[] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s)
+    {
+        return queryCptInner(cptId, cptDataStorageAddress);
+    }
+
+    function queryPolicy(
+        uint cptId
+    ) 
+        public 
+        constant 
+        returns 
+    (
+        address publisher, 
+        int[] intArray, 
+        bytes32[] bytes32Array,
+        bytes32[] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s)
+    {
+        return queryCptInner(cptId, policyDataStorageAddress);
+    }
+
+    function getCptDynamicIntArray(
+        uint cptId,
+        address dataStorageAddress
     ) 
         public
         constant 
         returns (int[])
     {
+        CptData cptData = CptData(dataStorageAddress);
         int[8] memory staticIntArray = cptData.getCptIntArray(cptId);
         int[] memory dynamicIntArray = new int[](8);
         for (uint i = 0; i < 8; i++) {
@@ -240,12 +393,14 @@ contract CptController {
     }
 
     function getCptDynamicBytes32Array(
-        uint cptId
+        uint cptId,
+        address dataStorageAddress
     ) 
         public 
         constant 
         returns (bytes32[])
     {
+        CptData cptData = CptData(dataStorageAddress);
         bytes32[8] memory staticBytes32Array = cptData.getCptBytes32Array(cptId);
         bytes32[] memory dynamicBytes32Array = new bytes32[](8);
         for (uint i = 0; i < 8; i++) {
@@ -255,12 +410,14 @@ contract CptController {
     }
 
     function getCptDynamicJsonSchemaArray(
-        uint cptId
+        uint cptId,
+        address dataStorageAddress
     ) 
         public 
         constant 
         returns (bytes32[])
     {
+        CptData cptData = CptData(dataStorageAddress);
         bytes32[128] memory staticBytes32Array = cptData.getCptJsonSchemaArray(cptId);
         bytes32[] memory dynamicBytes32Array = new bytes32[](128);
         for (uint i = 0; i < 128; i++) {
@@ -269,7 +426,63 @@ contract CptController {
         return dynamicBytes32Array;
     }
 
-    //store the cptId and blocknumber
+    function getPolicyIdList(uint startPos, uint num)
+        public
+        constant
+        returns (uint[])
+    {
+        CptData cptData = CptData(policyDataStorageAddress);
+        uint totalLength = cptData.getDatasetLength();
+        uint dataLength;
+        if (totalLength < startPos) {
+            return new uint[](1);
+        } else if (totalLength <= startPos + num) {
+            dataLength = totalLength - startPos;
+        } else {
+            dataLength = num;
+        }
+        uint[] memory result = new uint[](dataLength);
+        for (uint i = 0; i < dataLength; i++) {
+            result[i] = cptData.getCptIdFromIndex(i);
+        }
+        return result;
+    }
+
+    function getCptIdList(uint startPos, uint num)
+        public
+        constant
+        returns (uint[])
+    {
+        CptData cptData = CptData(cptDataStorageAddress);
+        uint totalLength = cptData.getDatasetLength();
+        uint dataLength;
+        if (totalLength < startPos) {
+            return new uint[](1);
+        } else if (totalLength <= startPos + num) {
+            dataLength = totalLength - startPos;
+        } else {
+            dataLength = num;
+        }
+        uint[] memory result = new uint[](dataLength);
+        for (uint i = 0; i < dataLength; i++) {
+            result[i] = cptData.getCptIdFromIndex(i);
+        }
+        return result;
+    }
+
+    function getTotalCptId() public constant returns (uint) {
+        CptData cptData = CptData(cptDataStorageAddress);
+        return cptData.getDatasetLength();
+    }
+
+    function getTotalPolicyId() public constant returns (uint) {
+        CptData cptData = CptData(policyDataStorageAddress);
+        return cptData.getDatasetLength();
+    }
+
+    // --------------------------------------------------------
+    // Credential Template storage related funcs
+    // store the cptId and blocknumber
     mapping (uint => uint) credentialTemplateStored;
     event CredentialTemplate(
         uint cptId,
@@ -296,5 +509,35 @@ contract CptController {
         returns(uint)
     {
         return credentialTemplateStored[cptId];
+    }
+
+    // --------------------------------------------------------
+    // Claim Policy storage belonging to v.s. Presentation, Publisher WeID, and CPT
+    // Store the registered Presentation Policy ID (uint) v.s. Claim Policy ID list (uint[])
+    mapping (uint => uint[]) private claimPoliciesFromPresentation;
+    mapping (uint => address) private claimPoliciesWeIdFromPresentation;
+    // Store the registered CPT ID (uint) v.s. Claim Policy ID list (uint[])
+    mapping (uint => uint[]) private claimPoliciesFromCPT;
+
+    uint private presentationClaimMapId = 1;
+
+    function putClaimPoliciesIntoPresentationMap(uint[] uintArray) public {
+        claimPoliciesFromPresentation[presentationClaimMapId] = uintArray;
+        claimPoliciesWeIdFromPresentation[presentationClaimMapId] = msg.sender;
+        RegisterCptRetLog(0, presentationClaimMapId, CPT_DEFAULT_VERSION);
+        presentationClaimMapId ++;
+    }
+
+    function getClaimPoliciesFromPresentationMap(uint presentationId) public constant returns (uint[], address) {
+        return (claimPoliciesFromPresentation[presentationId], claimPoliciesWeIdFromPresentation[presentationId]);
+    }
+    
+    function putClaimPoliciesIntoCptMap(uint cptId, uint[] uintArray) public {
+        claimPoliciesFromCPT[cptId] = uintArray;
+        RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
+    }
+    
+    function getClaimPoliciesFromCptMap(uint cptId) public constant returns (uint[]) {
+        return claimPoliciesFromCPT[cptId];
     }
 }
