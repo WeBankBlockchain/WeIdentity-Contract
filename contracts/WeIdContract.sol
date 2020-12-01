@@ -18,9 +18,21 @@ pragma solidity ^0.4.4;
  *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import "./RoleController.sol";
+
 contract WeIdContract {
 
+    RoleController private roleController;
+
     mapping(address => uint) changed;
+
+    uint firstBlockNum;
+
+    uint lastBlockNum;
+    
+    uint weIdCount = 0;
+
+    mapping(uint => uint) blockAfterLink;
 
     modifier onlyOwner(address identity, address actor) {
         require (actor == identity);
@@ -30,12 +42,29 @@ contract WeIdContract {
     bytes32 constant private WEID_KEY_CREATED = "created";
     bytes32 constant private WEID_KEY_AUTHENTICATION = "/weId/auth";
 
+    // Constructor - Role controller is required in delegate calls
+    function WeIdContract(
+        address roleControllerAddress
+    )
+        public
+    {
+        roleController = RoleController(roleControllerAddress);
+        firstBlockNum = block.number;
+        lastBlockNum = firstBlockNum;
+    }
+
     event WeIdAttributeChanged(
         address indexed identity,
         bytes32 key,
         bytes value,
         uint previousBlock,
         int updated
+    );
+
+    event WeIdHistoryEvent(
+        address indexed identity,
+        uint previousBlock,
+        int created
     );
 
     function getLatestRelatedBlock(
@@ -46,6 +75,38 @@ contract WeIdContract {
         returns (uint) 
     {
         return changed[identity];
+    }
+
+    function getFirstBlockNum() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return firstBlockNum;
+    }
+
+    function getLatestBlockNum() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return lastBlockNum;
+    }
+
+    function getNextBlockNumByBlockNum(uint currentBlockNum) 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return blockAfterLink[currentBlockNum];
+    }
+
+    function getWeIdCount() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return weIdCount;
     }
 
     function createWeId(
@@ -60,6 +121,14 @@ contract WeIdContract {
         WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
         WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
         changed[identity] = block.number;
+        if (block.number > lastBlockNum) {
+            blockAfterLink[lastBlockNum] = block.number;
+        }
+        WeIdHistoryEvent(identity, lastBlockNum, updated);
+        if (block.number > lastBlockNum) {
+            lastBlockNum = block.number;
+        }
+        weIdCount++;
     }
 
     function delegateCreateWeId(
@@ -70,9 +139,19 @@ contract WeIdContract {
     )
         public
     {
-        WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
-        WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
-        changed[identity] = block.number;
+        if (roleController.checkPermission(msg.sender, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            WeIdAttributeChanged(identity, WEID_KEY_CREATED, created, changed[identity], updated);
+            WeIdAttributeChanged(identity, WEID_KEY_AUTHENTICATION, auth, changed[identity], updated);
+            changed[identity] = block.number;
+            if (block.number > lastBlockNum) {
+                blockAfterLink[lastBlockNum] = block.number;
+            }
+            WeIdHistoryEvent(identity, lastBlockNum, updated);
+            if (block.number > lastBlockNum) {
+                lastBlockNum = block.number;
+            }
+            weIdCount++;
+        }
     }
 
     function setAttribute(
@@ -84,7 +163,7 @@ contract WeIdContract {
         public 
         onlyOwner(identity, msg.sender)
     {
-    	WeIdAttributeChanged(identity, key, value, changed[identity], updated);
+        WeIdAttributeChanged(identity, key, value, changed[identity], updated);
         changed[identity] = block.number;
     }
 
@@ -96,10 +175,12 @@ contract WeIdContract {
     )
         public
     {
-        WeIdAttributeChanged(identity, key, value, changed[identity], updated);
-        changed[identity] = block.number;
+        if (roleController.checkPermission(msg.sender, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            WeIdAttributeChanged(identity, key, value, changed[identity], updated);
+            changed[identity] = block.number;
+        }
     }
-    
+
     function isIdentityExist(
         address identity
     ) 

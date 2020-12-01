@@ -32,11 +32,13 @@ contract AuthorityIssuerData {
     uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
     uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
     uint constant private RETURN_CODE_NAME_ALREADY_EXISTS = 500203;
+    uint constant private RETURN_CODE_UNRECOGNIZED = 500204;
 
     struct AuthorityIssuer {
-        // [0]: name
+        // [0]: name, [1]: desc, [2-11]: extra string
         bytes32[16] attribBytes32;
-        // [0]: create date
+        // [0]: create date, [1]: update date, [2-11]: extra int
+        // [15]: flag for recognition status (0: unrecognized, 1: recognized)
         int[16] attribInt;
         bytes accValue;
     }
@@ -59,8 +61,9 @@ contract AuthorityIssuerData {
         constant 
         returns (bool) 
     {
-        // Use LOCAL INFO here, not the RoleController data
-        // The latter one might lose track in the fresh-deploy or upgrade case
+        if (!roleController.checkRole(addr, roleController.ROLE_AUTHORITY_ISSUER())) {
+            return false;
+        }
         if (authorityIssuerMap[addr].attribBytes32[0] == bytes32(0)) {
             return false;
         }
@@ -76,20 +79,43 @@ contract AuthorityIssuerData {
         public
         returns (uint)
     {
-        if (isAuthorityIssuer(addr)) {
+        if (authorityIssuerMap[addr].attribBytes32[0] != bytes32(0)) {
             return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
         if (isNameDuplicate(attribBytes32[0])) {
             return RETURN_CODE_NAME_ALREADY_EXISTS;
         }
-        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
-        }
-        roleController.addRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+
+        // Actual Role must be granted by calling recognizeAuthorityIssuer()
+        // roleController.addRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+
         AuthorityIssuer memory authorityIssuer = AuthorityIssuer(attribBytes32, attribInt, accValue);
         authorityIssuerMap[addr] = authorityIssuer;
         authorityIssuerArray.push(addr);
         uniqueNameMap[attribBytes32[0]] = addr;
+        return RETURN_CODE_SUCCESS;
+    }
+    
+    function recognizeAuthorityIssuer(address addr) public returns (uint) {
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
+        }
+        if (authorityIssuerMap[addr].attribBytes32[0] == bytes32(0)) {
+            return RETURN_CODE_FAILURE_NOT_EXIST;
+        }
+        // Set role and flag
+        roleController.addRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+        authorityIssuerMap[addr].attribInt[15] = int(1);
+        return RETURN_CODE_SUCCESS;
+    }
+
+    function deRecognizeAuthorityIssuer(address addr) public returns (uint) {
+        if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
+            return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
+        }
+        // Remove role and flag
+        roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
+        authorityIssuerMap[addr].attribInt[15] = int(0);
         return RETURN_CODE_SUCCESS;
     }
 
@@ -99,7 +125,7 @@ contract AuthorityIssuerData {
         public 
         returns (uint)
     {
-        if (!isAuthorityIssuer(addr)) {
+        if (authorityIssuerMap[addr].attribBytes32[0] == bytes32(0)) {
             return RETURN_CODE_FAILURE_NOT_EXIST;
         }
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {

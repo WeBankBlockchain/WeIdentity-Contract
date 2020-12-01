@@ -21,164 +21,191 @@ pragma experimental ABIEncoderV2;
  */
 contract DataBucket {
     
-    string[] hashList;      // all hash
+    string[] bucketIdList;      // all bucketId
     
     struct DataStruct {
-        string hash;         // the hash
-        address owner;        // owner for hash
-        address[] useAddress; // the user list for use this hash
-        bool isUsed;           // the hash is be useed
-        uint256 index;        // the hash index in hashList
-        uint256 timestamp;    // the first time for create hash
-        mapping(bytes32 => string) kv; //the mapping for store the key--value
+        string bucketId;         // the bucketId
+        address owner;        // owner for bucket
+        address[] useAddress; // the user list for use this bucket
+        bool isUsed;           // the bucketId is be useed
+        uint256 index;        // the bucketId index in bucketIdList
+        uint256 timestamp;    // the first time for create bucketId
+        mapping(bytes32 => string) extra; //the mapping for store the key--value
     }
     
-    mapping(string => DataStruct) hashData; // hash-->DataStruct
+    mapping(string => DataStruct) bucketData; // bucketId-->DataStruct
+    
+    address owner;
     
     uint8 constant private SUCCESS = 100;
     uint8 constant private NO_PERMISSION = 101;
-    uint8 constant private THE_HASH_DOES_NOT_EXIST = 102;
-    uint8 constant private THE_HASH_IS_USED = 103;
-    uint8 constant private THE_HASH_IS_NOT_USED = 104;
+    uint8 constant private THE_BUCKET_DOES_NOT_EXIST = 102;
+    uint8 constant private THE_BUCKET_IS_USED = 103;
+    uint8 constant private THE_BUCKET_IS_NOT_USED = 104;
+    
+    function DataBucket() public {
+        owner = msg.sender;
+    }
     
     /**
      * put the key-value into hashData.
      * 
-     * @param hash the hash
+     * @param bucketId the bucketId
      * @param key the store key
      * @param value the value of the key
      * @return code the code for result
      */ 
     function put(
-        string hash, 
+        string bucketId, 
         bytes32 key, 
         string value
     ) 
         public 
         returns (uint8 code) 
     {
-        DataStruct storage data = hashData[hash];
-        //the first put hash
+        DataStruct storage data = bucketData[bucketId];
+        //the first put bucketId
         if (data.owner == address(0x0)) {
-            data.hash = hash;
+            data.bucketId = bucketId;
             data.owner = msg.sender;
             data.timestamp = now;
-            pushHash(data);
-            data.kv[key] = value;
+            pushBucketId(data);
+            data.extra[key] = value;
             return SUCCESS;
         } else {
             // no permission
             if (data.owner != msg.sender) {
                  return NO_PERMISSION;
             }
-            data.kv[key] = value;
+            data.extra[key] = value;
             return SUCCESS;
         }
     }
     
     /**
-     * push hash into hashList.
+     * push bucketId into hashList.
      * 
-     * @param data the data for hash
+     * @param data the data for bucket
      * 
      */ 
-    function pushHash(
+    function pushBucketId(
         DataStruct storage data
     ) 
         internal 
     {
         // find the first empty index.
         int8 emptyIndex = -1;
-        for (uint8 i = 0; i < hashList.length; i++) {
-            if (isEqualString(hashList[i], "")) {
+        for (uint8 i = 0; i < bucketIdList.length; i++) {
+            if (isEqualString(bucketIdList[i], "")) {
                 emptyIndex = int8(i);
                 break;
             }
         }
         // can not find the empty index, push data to last
         if (emptyIndex == -1) {
-            hashList.push(data.hash);
-            data.index = hashList.length - 1;
+            bucketIdList.push(data.bucketId);
+            data.index = bucketIdList.length - 1;
         } else {
             // push data by index
             uint8 index = uint8(emptyIndex);
-            hashList[index] = data.hash;
+            bucketIdList[index] = data.bucketId;
             data.index = index;
         }
     }
     
     /**
-     * get value by key in the hash data.
+     * get value by key in the bucket data.
      * 
-     * @param hash the hash
+     * @param bucketId the bucketId
      * @param key get the value by this key
      * @return value the value
      */ 
     function get(
-        string hash, 
+        string bucketId, 
         bytes32 key
     ) 
         public view
         returns (uint8 code, string value) 
     {
-        DataStruct storage data = hashData[hash];
+        DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
-            return (THE_HASH_DOES_NOT_EXIST, "");
+            return (THE_BUCKET_DOES_NOT_EXIST, "");
         }
-        return (SUCCESS, data.kv[key]);
+        return (SUCCESS, data.extra[key]);
     }
     
     /**
-     * remove hash when the key is null, others remove the key
+     * remove bucket when the key is null, others remove the key
      * 
-     * @param hash the hash
+     * @param bucketId the bucketId
      * @param key the key
      * @return the code for result
      */ 
-    function remove(
-        string hash, 
+    function removeExtraItem(
+        string bucketId, 
         bytes32 key
     ) 
         public 
         returns (uint8 code) 
     {
-        DataStruct memory data = hashData[hash];
+        DataStruct memory data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXIST;
-        }
-        if (key ==  bytes32("$admin")) {
-            delete hashList[data.index];
-            delete hashData[hash];
-            return SUCCESS;
-        }
-        if (msg.sender != data.owner) {
+            return THE_BUCKET_DOES_NOT_EXIST;
+        } else if (msg.sender != data.owner) {
             return NO_PERMISSION;
-        }
-        if (data.isUsed) {
-            return THE_HASH_IS_USED;
-        }
-        if (key == bytes32(0x0)) {
-            delete hashList[data.index];
-            delete hashData[hash];
+        } else if (data.isUsed) {
+            return THE_BUCKET_IS_USED;
         } else {
-            delete hashData[hash].kv[key];
+           delete bucketData[bucketId].extra[key];
+           return SUCCESS;
         }
-        return SUCCESS;
     }
     
     /**
-     * enable the hash.
-     * @param hash the hash
+     * remove bucket when the key is null, others remove the key
+     * 
+     * @param bucketId the bucketId
+     * @param force force delete
+     * @return the code for result
+     */ 
+    function removeDataBucketItem(
+        string bucketId,
+        bool force
+    ) 
+        public 
+        returns (uint8 code) 
+    {
+        DataStruct memory data = bucketData[bucketId];
+        if (data.owner == address(0x0)) {
+            return THE_BUCKET_DOES_NOT_EXIST;
+        } else if (msg.sender == owner && force) {
+            delete bucketIdList[data.index];
+            delete bucketData[bucketId];
+            return SUCCESS;
+        } else if (msg.sender != data.owner) {
+            return NO_PERMISSION;
+        } else if (data.isUsed) {
+            return THE_BUCKET_IS_USED;
+        } else {
+            delete bucketIdList[data.index];
+            delete bucketData[bucketId];
+            return SUCCESS;
+        }
+    }
+    
+    /**
+     * enable the bucket.
+     * @param bucketId the bucketId
      */
-    function enableHash(
-        string hash
+    function enable(
+        string bucketId
     ) 
         public 
         returns (uint8) 
     {
-        DataStruct storage data = hashData[hash];
+        DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXIST;
+            return THE_BUCKET_DOES_NOT_EXIST;
         }
         
         if (!data.isUsed) {
@@ -231,7 +258,7 @@ contract DataBucket {
     }
     
     /**
-     * true is THE_HASH_IS_USED, false THE_HASH_IS_NOT_USED.
+     * true is THE_BUCKET_IS_USED, false THE_BUCKET_IS_NOT_USED.
      */
     function hasUse(
         DataStruct storage data
@@ -249,21 +276,21 @@ contract DataBucket {
     }
     
     /**
-     * disable the hash
-     * @param hash the hash
+     * disable the bucket
+     * @param bucketId the bucketId
      */
-    function disableHash(
-        string hash
+    function disable(
+        string bucketId
     ) 
         public 
         returns (uint8) 
     {
-        DataStruct storage data = hashData[hash];
+        DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
-            return THE_HASH_DOES_NOT_EXIST;
+            return THE_BUCKET_DOES_NOT_EXIST;
         }
         if (!data.isUsed) {
-            return THE_HASH_IS_NOT_USED;
+            return THE_BUCKET_IS_NOT_USED;
         }
         removeUseAddress(data);
         data.isUsed = hasUse(data);
@@ -271,36 +298,36 @@ contract DataBucket {
     }
     
     /**
-     * get all hash by page.
+     * get all bucket by page.
      */ 
-    function getAllHash(
-        uint8 offset, 
+    function getAllBucket(
+        uint8 index, 
         uint8 num
     ) 
         public 
         view
-        returns (string[] hashs, address[] owners, uint256[] timestamps, uint8 nextIndex) 
+        returns (string[] bucketIds, address[] owners, uint256[] timestamps, uint8 nextIndex) 
     {
-        hashs = new string[](num);
+        bucketIds = new string[](num);
         owners = new address[](num);
         timestamps = new uint256[](num);
-        uint8 index = 0;
+        uint8 currentIndex = 0;
         uint8 next = 0;
-        for (uint8 i = offset; i < hashList.length; i++) {
-            string storage hash = hashList[i];
-            if (!isEqualString(hash, "")) {
-                DataStruct memory data = hashData[hash];
-                hashs[index] = hash;
-                owners[index] = data.owner;
-                timestamps[index] = data.timestamp;
-                index++;
-                if (index == num && i != hashList.length - 1) {
+        for (uint8 i = index; i < bucketIdList.length; i++) {
+            string storage bucketId = bucketIdList[i];
+            if (!isEqualString(bucketId, "")) {
+                DataStruct memory data = bucketData[bucketId];
+                bucketIds[currentIndex] = bucketId;
+                owners[currentIndex] = data.owner;
+                timestamps[currentIndex] = data.timestamp;
+                currentIndex++;
+                if (currentIndex == num && i != bucketIdList.length - 1) {
                     next = i + 1;
                     break;
                 }
             }
         }
-        return (hashs, owners, timestamps, next);
+        return (bucketIds, owners, timestamps, next);
     }
     
     function isEqualString(
@@ -316,5 +343,65 @@ contract DataBucket {
         } else {
             return keccak256(a) == keccak256(b);
         }
+    }
+    
+    /**
+     * update the owner of bucket
+     */
+    function updateBucketOwner(
+        string bucketId,
+        address newOwner
+    ) 
+        public 
+        returns (uint8) 
+    {
+        // check the bucketId is exist
+        DataStruct storage data = bucketData[bucketId];
+        if (data.owner == address(0x0)) {
+            return THE_BUCKET_DOES_NOT_EXIST;
+        }
+        
+        // check the owner
+        if (msg.sender != owner) {
+            return NO_PERMISSION;
+        }
+        
+        if (newOwner != address(0x0)) {
+            data.owner = newOwner;
+        }
+        return SUCCESS;
+    }
+
+    /**
+     * get use address by bucketId.
+     * @param bucketId the bucketId
+     * @param index query start index
+     * @param num query count
+     */ 
+    function getActivatedUserList(
+        string bucketId,
+        uint8 index, 
+        uint8 num
+    ) 
+        public 
+        view
+        returns (address[] users, uint8 nextIndex) 
+    {
+        users = new address[](num);
+        uint8 userIndex = 0;
+        uint8 next = 0;
+        DataStruct memory data = bucketData[bucketId];
+        for (uint8 i = index; i < data.useAddress.length; i++) {
+            address user = data.useAddress[i];
+            if (user != address(0x0)) {
+                users[userIndex] = user;
+                userIndex++;
+                if (userIndex == num && i != data.useAddress.length - 1) {
+                    next = i + 1;
+                    break;
+                }
+            }
+        }
+        return (users, next);
     }
 }
