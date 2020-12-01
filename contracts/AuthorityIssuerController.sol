@@ -80,6 +80,10 @@ contract AuthorityIssuerController {
         AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
     }
 
+    function getTotalIssuer() public constant returns (uint) {
+        return authorityIssuerData.getDatasetLength();
+    }
+
     function getAuthorityIssuerAddressList(
         uint startPos,
         uint num
