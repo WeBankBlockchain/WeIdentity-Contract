@@ -443,7 +443,7 @@ contract CptController {
         }
         uint[] memory result = new uint[](dataLength);
         for (uint i = 0; i < dataLength; i++) {
-            result[i] = cptData.getCptIdFromIndex(i);
+            result[i] = cptData.getCptIdFromIndex(startPos + i);
         }
         return result;
     }
@@ -465,7 +465,7 @@ contract CptController {
         }
         uint[] memory result = new uint[](dataLength);
         for (uint i = 0; i < dataLength; i++) {
-            result[i] = cptData.getCptIdFromIndex(i);
+            result[i] = cptData.getCptIdFromIndex(startPos + i);
         }
         return result;
     }
