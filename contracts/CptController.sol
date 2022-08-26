@@ -275,7 +275,7 @@ contract CptController {
             intArray[0] = cptVersion;
             int created = cptIntArray[1];
             intArray[1] = created;
-            cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
+            cptData.updateCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
             UpdateCptRetLog(0, cptId, cptVersion);
             return true;
         } else {

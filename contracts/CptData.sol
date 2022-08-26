@@ -79,6 +79,29 @@ contract CptData {
         return true;
     }
 
+    function updateCpt(
+        uint cptId,
+        address cptPublisher,
+        int[8] cptIntArray,
+        bytes32[8] cptBytes32Array,
+        bytes32[128] cptJsonSchemaArray,
+        uint8 cptV,
+        bytes32 cptR,
+        bytes32 cptS
+    )
+    public
+    returns (bool)
+    {
+        cptMap[cptId].signature.v=cptV;
+        cptMap[cptId].signature.r=cptR;
+        cptMap[cptId].signature.s=cptS;
+        cptMap[cptId].publisher=cptPublisher;
+        cptMap[cptId].intArray=cptIntArray;
+        cptMap[cptId].bytes32Array=cptBytes32Array;
+        cptMap[cptId].jsonSchemaArray=cptJsonSchemaArray;
+        return true;
+    }
+
     function getCptId(
         address publisher
     ) 
