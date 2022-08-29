@@ -130,4 +130,53 @@ contract SpecificIssuerController {
         }
         return resultArray;
     }
+
+    function getSpecificTypeIssuerSize(bytes32 typeName) public constant returns (uint) {
+        return specificIssuerData.getSpecificTypeIssuerLength(typeName);
+    }
+
+    function getIssuerTypeList(
+        uint startPos,
+        uint num
+    )
+        public
+        constant
+        returns (bytes32[] typeNames, address[] owners, uint256[] createds)
+    {
+        uint totalLength = specificIssuerData.getTypeNameSize();
+
+        uint dataLength;
+        // Calculate actual dataLength
+        if (totalLength < startPos) {
+          return (new bytes32[](0), new address[](0), new uint256[](0));
+        } else if (totalLength <= startPos + num) {
+          dataLength = totalLength - startPos;
+        } else {
+          dataLength = num;
+        }
+
+        typeNames = new bytes32[](dataLength);
+        owners = new address[](dataLength);
+        createds = new uint256[](dataLength);
+        for (uint index = 0; index < dataLength; index++) {
+          (bytes32 typeName, address owner, uint256 created) = specificIssuerData.getTypInfoByIndex(startPos + index);
+          typeNames[index] = typeName;
+          owners[index] = owner;
+          createds[index] = created;
+        }
+        return (typeNames, owners, createds);
+    }
+
+    function removeIssuerType(bytes32 typeName) public {
+        uint result = specificIssuerData.removeIssuerType(typeName);
+        SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, 0x0);
+    }
+
+    function getIssuerTypeCount()
+        public
+        constant
+        returns (uint)
+    {
+        return specificIssuerData.getTypeNameSize();
+    }
 }

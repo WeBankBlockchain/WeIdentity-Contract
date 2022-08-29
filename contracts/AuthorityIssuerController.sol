@@ -150,4 +150,12 @@ contract AuthorityIssuerController {
     {
         return authorityIssuerData.getAddressFromName(name);
     }
+
+    function getRecognizedIssuerCount() 
+        public 
+        constant 
+        returns (uint) 
+    {
+        return authorityIssuerData.getRecognizedIssuerCount();
+    }
 }

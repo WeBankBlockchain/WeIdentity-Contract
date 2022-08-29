@@ -1,3 +1,9 @@
+### V1.2.30 (2021-04-15)
+* 新增
+1. Authority支持查询已认证的权威机构总数。
+2. SpecificIssuer支持分页查询Type列表以及删除Type。
+
+
 ### V1.2.12 (2020-01-2)
 * 新增
 1. CPT合约支持零知识证明的credential template的读写。
