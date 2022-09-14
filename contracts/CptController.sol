@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./CptData.sol";
 import "./WeIdContract.sol";
@@ -25,14 +26,14 @@ import "./RoleController.sol";
 contract CptController {
 
     // Error codes
-    uint constant private CPT_NOT_EXIST = 500301;
-    uint constant private AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX = 500302;
-    uint constant private CPT_PUBLISHER_NOT_EXIST = 500303;
-    uint constant private CPT_ALREADY_EXIST = 500304;
-    uint constant private NO_PERMISSION = 500305;
+    uint private CPT_NOT_EXIST = 500301;
+    uint private AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX = 500302;
+    uint private CPT_PUBLISHER_NOT_EXIST = 500303;
+    uint private CPT_ALREADY_EXIST = 500304;
+    uint private NO_PERMISSION = 500305;
 
     // Default CPT version
-    int constant private CPT_DEFAULT_VERSION = 1;
+    int private CPT_DEFAULT_VERSION = 1;
 
     WeIdContract private weIdContract;
     RoleController private roleController;
@@ -45,7 +46,7 @@ contract CptController {
     address private cptDataStorageAddress;
     address private policyDataStorageAddress;
 
-    function CptController(
+    constructor(
         address cptDataAddress,
         address weIdContractAddress
     ) 
@@ -61,7 +62,7 @@ contract CptController {
     )
         public
     {
-        if (msg.sender != owner || policyDataAddress == 0x0) {
+        if (msg.sender != owner || policyDataAddress == address(0)) {
             return;
         }
         policyDataStorageAddress = policyDataAddress;
@@ -72,7 +73,7 @@ contract CptController {
     )
         public
     {
-        if (msg.sender != owner || roleControllerAddress == 0x0) {
+        if (msg.sender != owner || roleControllerAddress == address(0)) {
             return;
         }
         roleController = RoleController(roleControllerAddress);
@@ -97,9 +98,9 @@ contract CptController {
     function registerCptInner(
         uint cptId,
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s,
@@ -109,12 +110,12 @@ contract CptController {
         returns (bool)
     {
         if (!weIdContract.isIdentityExist(publisher)) {
-            RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
+            emit RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
         }
         CptData cptData = CptData(dataStorageAddress);
         if (cptData.isCptExist(cptId)) {
-            RegisterCptRetLog(CPT_ALREADY_EXIST, cptId, 0);
+            emit RegisterCptRetLog(CPT_ALREADY_EXIST, cptId, 0);
             return false;
         }
 
@@ -124,22 +125,22 @@ contract CptController {
         uint highId = cptData.NONE_AUTHORITY_ISSUER_START_ID();
         if (cptId < lowId) {
             // Only committee member can create this, check initialization first
-            if (internalRoleControllerAddress == 0x0) {
-                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+            if (internalRoleControllerAddress == address(0)) {
+                emit RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
             }
             if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                emit RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
             }
         } else if (cptId < highId) {
             // Only authority issuer can create this, check initialization first
-            if (internalRoleControllerAddress == 0x0) {
-                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+            if (internalRoleControllerAddress == address(0)) {
+                emit RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
             }
             if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-                RegisterCptRetLog(NO_PERMISSION, cptId, 0);
+                emit RegisterCptRetLog(NO_PERMISSION, cptId, 0);
                 return false;
             }
         }
@@ -147,16 +148,16 @@ contract CptController {
         intArray[0] = CPT_DEFAULT_VERSION;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
 
-        RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
+        emit RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
         return true;
     }
 
     function registerCpt(
         uint cptId,
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -170,9 +171,9 @@ contract CptController {
     function registerPolicy(
         uint cptId,
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -185,9 +186,9 @@ contract CptController {
 
     function registerCptInner(
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s,
@@ -197,29 +198,29 @@ contract CptController {
         returns (bool) 
     {
         if (!weIdContract.isIdentityExist(publisher)) {
-            RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
+            emit RegisterCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
         }
         CptData cptData = CptData(dataStorageAddress);
 
         uint cptId = cptData.getCptId(publisher); 
         if (cptId == 0) {
-            RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
+            emit RegisterCptRetLog(AUTHORITY_ISSUER_CPT_ID_EXCEED_MAX, 0, 0);
             return false;
         }
         int cptVersion = CPT_DEFAULT_VERSION;
         intArray[0] = cptVersion;
         cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
 
-        RegisterCptRetLog(0, cptId, cptVersion);
+        emit RegisterCptRetLog(0, cptId, cptVersion);
         return true;
     }
 
     function registerCpt(
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -232,9 +233,9 @@ contract CptController {
 
     function registerPolicy(
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -248,9 +249,9 @@ contract CptController {
     function updateCptInner(
         uint cptId, 
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s,
@@ -260,13 +261,13 @@ contract CptController {
         returns (bool) 
     {
         if (!weIdContract.isIdentityExist(publisher)) {
-            UpdateCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
+            emit UpdateCptRetLog(CPT_PUBLISHER_NOT_EXIST, 0, 0);
             return false;
         }
         CptData cptData = CptData(dataStorageAddress);
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())
             && publisher != cptData.getCptPublisher(cptId)) {
-            UpdateCptRetLog(NO_PERMISSION, 0, 0);
+            emit UpdateCptRetLog(NO_PERMISSION, 0, 0);
             return false;
         }
         if (cptData.isCptExist(cptId)) {
@@ -276,10 +277,10 @@ contract CptController {
             int created = cptIntArray[1];
             intArray[1] = created;
             cptData.putCpt(cptId, publisher, intArray, bytes32Array, jsonSchemaArray, v, r, s);
-            UpdateCptRetLog(0, cptId, cptVersion);
+            emit UpdateCptRetLog(0, cptId, cptVersion);
             return true;
         } else {
-            UpdateCptRetLog(CPT_NOT_EXIST, 0, 0);
+            emit UpdateCptRetLog(CPT_NOT_EXIST, 0, 0);
             return false;
         }
     }
@@ -287,9 +288,9 @@ contract CptController {
     function updateCpt(
         uint cptId, 
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -303,9 +304,9 @@ contract CptController {
     function updatePolicy(
         uint cptId, 
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s
@@ -321,12 +322,12 @@ contract CptController {
         address dataStorageAddress
     ) 
         private 
-        constant 
+        view 
         returns (
         address publisher, 
-        int[] intArray, 
-        bytes32[] bytes32Array,
-        bytes32[] jsonSchemaArray, 
+        int[] memory intArray, 
+        bytes32[] memory bytes32Array,
+        bytes32[] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s)
@@ -343,13 +344,13 @@ contract CptController {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns 
     (
         address publisher, 
-        int[] intArray, 
-        bytes32[] bytes32Array,
-        bytes32[] jsonSchemaArray, 
+        int[] memory intArray, 
+        bytes32[] memory bytes32Array,
+        bytes32[] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s)
@@ -361,13 +362,13 @@ contract CptController {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns 
     (
         address publisher, 
-        int[] intArray, 
-        bytes32[] bytes32Array,
-        bytes32[] jsonSchemaArray, 
+        int[] memory intArray, 
+        bytes32[] memory bytes32Array,
+        bytes32[] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s)
@@ -380,8 +381,8 @@ contract CptController {
         address dataStorageAddress
     ) 
         public
-        constant 
-        returns (int[])
+        view
+        returns (int[] memory)
     {
         CptData cptData = CptData(dataStorageAddress);
         int[8] memory staticIntArray = cptData.getCptIntArray(cptId);
@@ -396,9 +397,9 @@ contract CptController {
         uint cptId,
         address dataStorageAddress
     ) 
-        public 
-        constant 
-        returns (bytes32[])
+        public
+        view
+        returns (bytes32[] memory)
     {
         CptData cptData = CptData(dataStorageAddress);
         bytes32[8] memory staticBytes32Array = cptData.getCptBytes32Array(cptId);
@@ -413,9 +414,9 @@ contract CptController {
         uint cptId,
         address dataStorageAddress
     ) 
-        public 
-        constant 
-        returns (bytes32[])
+        public
+        view
+        returns (bytes32[] memory)
     {
         CptData cptData = CptData(dataStorageAddress);
         bytes32[128] memory staticBytes32Array = cptData.getCptJsonSchemaArray(cptId);
@@ -428,8 +429,8 @@ contract CptController {
 
     function getPolicyIdList(uint startPos, uint num)
         public
-        constant
-        returns (uint[])
+        view
+        returns (uint[] memory)
     {
         CptData cptData = CptData(policyDataStorageAddress);
         uint totalLength = cptData.getDatasetLength();
@@ -450,8 +451,8 @@ contract CptController {
 
     function getCptIdList(uint startPos, uint num)
         public
-        constant
-        returns (uint[])
+        view
+        returns (uint[] memory)
     {
         CptData cptData = CptData(cptDataStorageAddress);
         uint totalLength = cptData.getDatasetLength();
@@ -470,12 +471,12 @@ contract CptController {
         return result;
     }
 
-    function getTotalCptId() public constant returns (uint) {
+    function getTotalCptId() public view returns (uint) {
         CptData cptData = CptData(cptDataStorageAddress);
         return cptData.getDatasetLength();
     }
 
-    function getTotalPolicyId() public constant returns (uint) {
+    function getTotalPolicyId() public view returns (uint) {
         CptData cptData = CptData(policyDataStorageAddress);
         return cptData.getDatasetLength();
     }
@@ -492,12 +493,12 @@ contract CptController {
 
     function putCredentialTemplate(
         uint cptId,
-        bytes credentialPublicKey,
-        bytes credentialProof
+        bytes memory credentialPublicKey,
+        bytes memory credentialProof
     )
         public
     {
-        CredentialTemplate(cptId, credentialPublicKey, credentialProof);
+        emit CredentialTemplate(cptId, credentialPublicKey, credentialProof);
         credentialTemplateStored[cptId] = block.number;
     }
 
@@ -505,7 +506,7 @@ contract CptController {
         uint cptId
     )
         public
-        constant
+        view
         returns(uint)
     {
         return credentialTemplateStored[cptId];
@@ -521,23 +522,23 @@ contract CptController {
 
     uint private presentationClaimMapId = 1;
 
-    function putClaimPoliciesIntoPresentationMap(uint[] uintArray) public {
+    function putClaimPoliciesIntoPresentationMap(uint[] memory uintArray) public {
         claimPoliciesFromPresentation[presentationClaimMapId] = uintArray;
         claimPoliciesWeIdFromPresentation[presentationClaimMapId] = msg.sender;
-        RegisterCptRetLog(0, presentationClaimMapId, CPT_DEFAULT_VERSION);
+        emit RegisterCptRetLog(0, presentationClaimMapId, CPT_DEFAULT_VERSION);
         presentationClaimMapId ++;
     }
 
-    function getClaimPoliciesFromPresentationMap(uint presentationId) public constant returns (uint[], address) {
+    function getClaimPoliciesFromPresentationMap(uint presentationId) public view returns (uint[] memory, address) {
         return (claimPoliciesFromPresentation[presentationId], claimPoliciesWeIdFromPresentation[presentationId]);
     }
     
-    function putClaimPoliciesIntoCptMap(uint cptId, uint[] uintArray) public {
+    function putClaimPoliciesIntoCptMap(uint cptId, uint[] memory uintArray) public {
         claimPoliciesFromCPT[cptId] = uintArray;
-        RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
+        emit RegisterCptRetLog(0, cptId, CPT_DEFAULT_VERSION);
     }
     
-    function getClaimPoliciesFromCptMap(uint cptId) public constant returns (uint[]) {
+    function getClaimPoliciesFromCptMap(uint cptId) public view returns (uint[] memory) {
         return claimPoliciesFromCPT[cptId];
     }
 }

@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 /**
  * @title RoleController
@@ -29,28 +30,28 @@ contract RoleController {
     /**
      * The universal NO_PERMISSION error code.
      */
-    uint constant public RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
+    uint public RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
 
     /**
      * Role related Constants.
      */
-    uint constant public ROLE_AUTHORITY_ISSUER = 100;
-    uint constant public ROLE_COMMITTEE = 101;
-    uint constant public ROLE_ADMIN = 102;
+    uint public ROLE_AUTHORITY_ISSUER = 100;
+    uint public ROLE_COMMITTEE = 101;
+    uint public ROLE_ADMIN = 102;
 
     /**
      * Operation related Constants.
      */
-    uint constant public MODIFY_AUTHORITY_ISSUER = 200;
-    uint constant public MODIFY_COMMITTEE = 201;
-    uint constant public MODIFY_ADMIN = 202;
-    uint constant public MODIFY_KEY_CPT = 203;
+    uint public MODIFY_AUTHORITY_ISSUER = 200;
+    uint public MODIFY_COMMITTEE = 201;
+    uint public MODIFY_ADMIN = 202;
+    uint public MODIFY_KEY_CPT = 203;
 
     mapping (address => bool) private authorityIssuerRoleBearer;
     mapping (address => bool) private committeeMemberRoleBearer;
     mapping (address => bool) private adminRoleBearer;
 
-    function RoleController() public {
+    constructor() public {
         authorityIssuerRoleBearer[msg.sender] = true;
         adminRoleBearer[msg.sender] = true;
         committeeMemberRoleBearer[msg.sender] = true;
@@ -64,7 +65,7 @@ contract RoleController {
         uint operation
     ) 
         public 
-        constant 
+        view 
         returns (bool) 
     {
         if (operation == MODIFY_AUTHORITY_ISSUER) {
@@ -150,7 +151,7 @@ contract RoleController {
         uint role
     ) 
         public 
-        constant 
+        view 
         returns (bool) 
     {
         if (role == ROLE_AUTHORITY_ISSUER) {

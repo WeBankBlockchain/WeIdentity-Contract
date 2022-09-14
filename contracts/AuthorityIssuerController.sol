@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./AuthorityIssuerData.sol";
 import "./RoleController.sol";
@@ -32,14 +33,14 @@ contract AuthorityIssuerController {
     RoleController private roleController;
 
     // Event structure to store tx records
-    uint constant private OPERATION_ADD = 0;
-    uint constant private OPERATION_REMOVE = 1;
-    uint constant private EMPTY_ARRAY_SIZE = 1;
+    uint private OPERATION_ADD = 0;
+    uint private OPERATION_REMOVE = 1;
+    uint private EMPTY_ARRAY_SIZE = 1;
 
     event AuthorityIssuerRetLog(uint operation, uint retCode, address addr);
 
     // Constructor.
-    function AuthorityIssuerController(
+    constructor(
         address authorityIssuerDataAddress,
         address roleControllerAddress
     ) 
@@ -51,36 +52,36 @@ contract AuthorityIssuerController {
 
     function addAuthorityIssuer(
         address addr,
-        bytes32[16] attribBytes32,
-        int[16] attribInt,
-        bytes accValue
+        bytes32[16] memory attribBytes32,
+        int[16] memory attribInt,
+        bytes memory accValue
     )
         public
     {
         uint result = authorityIssuerData.addAuthorityIssuerFromAddress(addr, attribBytes32, attribInt, accValue);
-        AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
+        emit AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
     }
     
     function recognizeAuthorityIssuer(address addr) public {
         uint result = authorityIssuerData.recognizeAuthorityIssuer(addr);
-        AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
+        emit AuthorityIssuerRetLog(OPERATION_ADD, result, addr);
     }
 
     function deRecognizeAuthorityIssuer(address addr) public {
         uint result = authorityIssuerData.deRecognizeAuthorityIssuer(addr);
-        AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
+        emit AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
     }
 
     function removeAuthorityIssuer(address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_AUTHORITY_ISSUER())) {
-            AuthorityIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
+            emit AuthorityIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
         }
         uint result = authorityIssuerData.deleteAuthorityIssuerFromAddress(addr);
-        AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
+        emit AuthorityIssuerRetLog(OPERATION_REMOVE, result, addr);
     }
 
-    function getTotalIssuer() public constant returns (uint) {
+    function getTotalIssuer() public view returns (uint) {
         return authorityIssuerData.getDatasetLength();
     }
 
@@ -89,8 +90,8 @@ contract AuthorityIssuerController {
         uint num
     ) 
         public 
-        constant 
-        returns (address[]) 
+        view 
+        returns (address[] memory) 
     {
         uint totalLength = authorityIssuerData.getDatasetLength();
 
@@ -115,8 +116,8 @@ contract AuthorityIssuerController {
         address addr
     )
         public
-        constant
-        returns (bytes32[], int[])
+        view
+        returns (bytes32[] memory, int[] memory)
     {
         // Due to the current limitations of bcos web3j, return dynamic bytes32 and int array instead.
         bytes32[16] memory allBytes32;
@@ -135,7 +136,7 @@ contract AuthorityIssuerController {
         address addr
     ) 
         public 
-        constant 
+        view 
         returns (bool) 
     {
         return authorityIssuerData.isAuthorityIssuer(addr);
@@ -145,15 +146,15 @@ contract AuthorityIssuerController {
         bytes32 name
     )
         public
-        constant
+        view
         returns (address)
     {
         return authorityIssuerData.getAddressFromName(name);
     }
-
+    
     function getRecognizedIssuerCount() 
         public 
-        constant 
+        view 
         returns (uint) 
     {
         return authorityIssuerData.getRecognizedIssuerCount();

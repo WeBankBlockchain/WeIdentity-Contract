@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./Evidence.sol";
 
@@ -29,8 +30,8 @@ contract EvidenceFactory {
     Evidence private evidence;
 
     // Event and Constants.
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
+    uint private RETURN_CODE_SUCCESS = 0;
+    uint private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
 
     event CreateEvidenceLog(uint retCode, address addr);
     event PutEvidenceLog(uint retCode, address addr);
@@ -38,48 +39,45 @@ contract EvidenceFactory {
     mapping (bytes32 => address) private evidenceMappingPre;
     mapping (bytes32 => address) private evidenceMappingAfter;
 
-    function createEvidence(
-        bytes32[] dataHash,
-        address[] signer,
+    constructor(
+        bytes32[] memory dataHash,
+        address[] memory signer,
         bytes32 r,
         bytes32 s,
         uint8 v,
-        bytes32[] extra
+        bytes32[] memory extra
     )
         public
-        returns (bool)
     {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
-            if (signer[index] == 0x0) {
-                CreateEvidenceLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, evidence);
-                return false;
+            if (signer[index] == address(0)) {
+                emit CreateEvidenceLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, address(0));
             }
         }
         Evidence evidence = new Evidence(dataHash, signer, r, s, v, extra);
-        CreateEvidenceLog(RETURN_CODE_SUCCESS, evidence);
-        return true;
+        emit CreateEvidenceLog(RETURN_CODE_SUCCESS, address(evidence));
     }
     
-    function putEvidence(bytes32[] hashValue, address addr) public returns (bool) {
-        if (hashValue.length < 2 || addr == 0x0) {
-            PutEvidenceLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, addr);
+    function putEvidence(bytes32[] memory hashValue, address addr) public returns (bool) {
+        if (hashValue.length < 2 || addr == address(0)) {
+            emit PutEvidenceLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, addr);
             return false;
         }
         evidenceMappingPre[hashValue[0]] = addr;
         evidenceMappingAfter[hashValue[1]] = addr;
-        PutEvidenceLog(RETURN_CODE_SUCCESS, addr);
+        emit PutEvidenceLog(RETURN_CODE_SUCCESS, addr);
         return true;
     }
 
-    function getEvidence(bytes32[] hashValue) public constant returns (address) {
+    function getEvidence(bytes32[] memory hashValue) public view returns (address) {
         if (hashValue.length < 2) {
-            return 0x0;
+            return address(0);
         }
         address addr = evidenceMappingPre[hashValue[0]];
         if (addr == evidenceMappingAfter[hashValue[1]]) {
             return addr;
         }
-        return 0x0;
+        return address(0);
     }
 }
