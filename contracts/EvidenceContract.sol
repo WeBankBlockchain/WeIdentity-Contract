@@ -22,10 +22,11 @@ contract EvidenceContract {
 
     //Evidence struct
     struct Evidence {
-        address signer;
-        string sig;
-        string log;
-        uint256 updated;
+        address[] signer;
+        string[] sig;
+        string[] log;
+        uint256[] updated;
+        bool[] revoked;
         mapping(string => string) extra;
     }
     // Evidence hash => Evidence
@@ -39,7 +40,7 @@ contract EvidenceContract {
         bytes32 hash,
         address signer,
         string sig,
-        string log,
+        string logs,
         uint256 updated
     );
 
@@ -47,7 +48,7 @@ contract EvidenceContract {
         bytes32 hash,
         address signer,
         string sig,
-        string log,
+        string logs,
         uint256 updated
     );
 
@@ -58,6 +59,12 @@ contract EvidenceContract {
         string key,
         string value,
         uint256 updated
+    );
+    
+    event Revoke(
+        bytes32 hash,
+        address signer,
+        bool revoke
     );
 
     /**
@@ -77,10 +84,11 @@ contract EvidenceContract {
         for (uint256 i = 0; i < sigSize; i++) {
             Evidence storage evidence = evidences[hash[i]];
             if (!isHashExist(hash[i])) {
-                evidence.sig = sigs[i];
-                evidence.log = logs[i];
-                evidence.signer = signer[i];
-                evidence.updated = updated[i];
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 emit CreateEvidence(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
         }
@@ -102,10 +110,11 @@ contract EvidenceContract {
         for (uint256 i = 0; i < sigSize; i++) {
             Evidence storage evidence = evidences[hash[i]];
             if (isHashExist(hash[i])) {
-                evidence.sig = sigs[i];
-                evidence.log = logs[i];
-                evidence.signer = signer[i];
-                evidence.updated = updated[i];
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 emit EvidenceAttributeChanged(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
         }
@@ -131,10 +140,11 @@ contract EvidenceContract {
         for (uint256 i = 0; i < sigSize; i++) {
             Evidence storage evidence = evidences[hash[i]];
             if (!isHashExist(hash[i])) {
-                evidence.sig = sigs[i];
-                evidence.log = logs[i];
-                evidence.signer = signer[i];
-                evidence.updated = updated[i];
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 if (!isEqualString(extraKey[i], "")) {
                     extraKeyMapping[extraKey[i]] = hash[i];
                 }
@@ -162,10 +172,11 @@ contract EvidenceContract {
         for (uint256 i = 0; i < sigSize; i++) {
             Evidence storage evidence = evidences[hash[i]];
             if (isHashExist(hash[i])) {
-                evidence.sig = sigs[i];
-                evidence.log = logs[i];
-                evidence.signer = signer[i];
-                evidence.updated = updated[i];
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 if (!isEqualString(extraKey[i], "")) {
                     extraKeyMapping[extraKey[i]] = hash[i];
                 }
@@ -191,11 +202,30 @@ contract EvidenceContract {
             if (isHashExist(hash[i])) {
                 Evidence storage evidence = evidences[hash[i]];
                 evidence.extra[key[i]] = value[i];
-                evidence.signer = signer[i];
-                evidence.updated = updated[i];
                 emit EvidenceExtraAttributeChanged(hash[i], signer[i], key[i], value[i], updated[i]);
             }
         }
+    }
+    
+    function revoke(
+        bytes32 _hash,
+        address _signer,
+        bool _revoke
+    )
+        public
+    {
+        require(isHashExist(_hash), "require evidence not exist");
+        Evidence storage evidence = evidences[_hash];
+        bool tag = false;
+        for (uint256 i = 0; i < evidence.signer.length; i++) {
+            if (_signer == evidence.signer[i]) {
+                tag = true;
+                evidence.revoked[i] = _revoke;
+                emit Revoke(_hash, _signer, _revoke);
+                break;
+            }
+        }
+        require(tag, "signer of this evidence not exist");
     }
 
     function getAttribute(
@@ -214,14 +244,14 @@ contract EvidenceContract {
     )
         public
         view
-        returns (address signer, string memory sig, string memory log, uint256 updated)
+        returns (address[] memory signer, string[] memory sig, string[] memory log, uint256[] memory updated, bool[] memory revoked)
     {
         require(isHashExist(hash), "require evidence not exist");
-        return (evidences[hash].signer, evidences[hash].sig, evidences[hash].log, evidences[hash].updated);
+        return (evidences[hash].signer, evidences[hash].sig, evidences[hash].log, evidences[hash].updated, evidences[hash].revoked);
     }
 
     function isHashExist(bytes32 hash) public view returns (bool) {
-        if (evidences[hash].signer != address(0)) {
+        if (evidences[hash].signer.length != 0) {
             return true;
         }
         return false;

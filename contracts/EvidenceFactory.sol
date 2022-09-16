@@ -39,7 +39,7 @@ contract EvidenceFactory {
     mapping (bytes32 => address) private evidenceMappingPre;
     mapping (bytes32 => address) private evidenceMappingAfter;
 
-    constructor(
+    function createEvidence(
         bytes32[] memory dataHash,
         address[] memory signer,
         bytes32 r,
