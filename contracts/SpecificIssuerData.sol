@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 /**
  * @title SpecificIssuerData
@@ -26,21 +27,21 @@ pragma solidity ^0.4.4;
 contract SpecificIssuerData {
 
     // Error codes
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500501;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500502;
-    uint constant private RETURN_CODE_FAILURE_EXCEED_MAX = 500503;
-    uint constant private RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
-    uint constant private RETURN_CODE_FAILURE_DEL_EXIST_ISSUER = 500504;
+    uint private RETURN_CODE_SUCCESS = 0;
+    uint private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500501;
+    uint private RETURN_CODE_FAILURE_NOT_EXIST = 500502;
+    uint private RETURN_CODE_FAILURE_EXCEED_MAX = 500503;
+    uint private RETURN_CODE_FAILURE_NO_PERMISSION = 500000;
+    uint private RETURN_CODE_FAILURE_DEL_EXIST_ISSUER = 500504;
 
     struct IssuerType {
         // typeName as index, dynamic array as getAt function and mapping as search
         bytes32 typeName;
         address[] fellow;
-        mapping (address => bool) isFellow;
         bytes32[8] extra;
         address owner;
         uint256 created;
+        mapping (address => bool) isFellow;
     }
 
     mapping (bytes32 => IssuerType) private issuerTypeMap;
@@ -50,14 +51,15 @@ contract SpecificIssuerData {
         if (isIssuerTypeExist(typeName)) {
             return RETURN_CODE_FAILURE_ALREADY_EXISTS;
         }
-        address[] memory fellow;
-        bytes32[8] memory extra;
-        IssuerType memory issuerType = IssuerType(typeName, fellow, extra, tx.origin, now);
-        issuerTypeMap[typeName] = issuerType;
+        //IssuerType memory issuerType = IssuerType(typeName, fellow, extra);
+        IssuerType storage issuerType = issuerTypeMap[typeName];
+        issuerType.typeName = typeName;
+        issuerType.owner = tx.origin;
+        issuerType.created = block.timestamp;
         typeNameArray.push(typeName);
         return RETURN_CODE_SUCCESS;
     }
-
+    
     function removeIssuerType(bytes32 typeName) public returns (uint) {
         if (!isIssuerTypeExist(typeName)) {
             return RETURN_CODE_FAILURE_NOT_EXIST;
@@ -72,57 +74,55 @@ contract SpecificIssuerData {
         uint datasetLength = typeNameArray.length;
         for (uint index = 0; index < datasetLength; index++) {
             if (typeNameArray[index] == typeName) {
+                if (index != datasetLength-1) {
+                    typeNameArray[index] = typeNameArray[datasetLength-1];
+                }
                 break;
             }
         }
-        if (index != datasetLength-1) {
-            typeNameArray[index] = typeNameArray[datasetLength-1];
-        }
-        delete typeNameArray[datasetLength-1];
-        typeNameArray.length--;
+        typeNameArray.pop();
         return RETURN_CODE_SUCCESS;
     }
 
-    function getTypeNameSize() public returns (uint) {
+    function getTypeNameSize() public view returns (uint) {
         return typeNameArray.length;
     }
 
-    function getTypInfoByIndex(uint index) public returns (bytes32, address, uint256) {
+    function getTypInfoByIndex(uint index) public view returns (bytes32, address, uint256) {
       bytes32 typeName = typeNameArray[index];
-      IssuerType memory issuerType = issuerTypeMap[typeName];
-      return (typeName, issuerType.owner, issuerType.created);
+      return (typeName, issuerTypeMap[typeName].owner, issuerTypeMap[typeName].created);
     }
 
     function addExtraValue(bytes32 typeName, bytes32 extraValue) public returns (uint) {
         if (!isIssuerTypeExist(typeName)) {
             return RETURN_CODE_FAILURE_NOT_EXIST;
         }
+        //IssuerType issuerType = issuerTypeMap[typeName];
         IssuerType storage issuerType = issuerTypeMap[typeName];
         for (uint index = 0; index < 8; index++) {
             if (issuerType.extra[index] == bytes32(0)) {
                 issuerType.extra[index] = extraValue;
                 break;
             }
-        }
-        if (index == 8) {
-            return RETURN_CODE_FAILURE_EXCEED_MAX;
+            if (index == 7) {
+                return RETURN_CODE_FAILURE_EXCEED_MAX;
+            }
         }
         return RETURN_CODE_SUCCESS;
     }
 
-    function getExtraValue(bytes32 typeName) public constant returns (bytes32[8]) {
+    function getExtraValue(bytes32 typeName) public view returns (bytes32[8] memory) {
         bytes32[8] memory extraValues;
         if (!isIssuerTypeExist(typeName)) {
             return extraValues;
         }
-        IssuerType memory issuerType = issuerTypeMap[typeName];
         for (uint index = 0; index < 8; index++) {
-            extraValues[index] = issuerType.extra[index];
+            extraValues[index] = issuerTypeMap[typeName].extra[index];
         }
         return extraValues;
     }
 
-    function isIssuerTypeExist(bytes32 name) public constant returns (bool) {
+    function isIssuerTypeExist(bytes32 name) public view returns (bool) {
         if (issuerTypeMap[name].typeName == bytes32(0)) {
             return false;
         }
@@ -149,26 +149,25 @@ contract SpecificIssuerData {
         uint dataLength = fellow.length;
         for (uint index = 0; index < dataLength; index++) {
             if (addr == fellow[index]) {
+                if (index != dataLength-1) {
+                    issuerTypeMap[typeName].fellow[index] = issuerTypeMap[typeName].fellow[dataLength-1];
+                }
                 break;
             }
         }
-        if (index != dataLength-1) {
-            issuerTypeMap[typeName].fellow[index] = issuerTypeMap[typeName].fellow[dataLength-1];
-        }
-        delete issuerTypeMap[typeName].fellow[dataLength-1];
-        issuerTypeMap[typeName].fellow.length--;
+        issuerTypeMap[typeName].fellow.pop();
         issuerTypeMap[typeName].isFellow[addr] = false;
         return RETURN_CODE_SUCCESS;
     }
 
-    function isSpecificTypeIssuer(bytes32 typeName, address addr) public constant returns (bool) {
+    function isSpecificTypeIssuer(bytes32 typeName, address addr) public view returns (bool) {
         if (issuerTypeMap[typeName].isFellow[addr] == false) {
             return false;
         }
         return true;
     }
 
-    function getSpecificTypeIssuers(bytes32 typeName, uint startPos) public constant returns (address[50]) {
+    function getSpecificTypeIssuers(bytes32 typeName, uint startPos) public view returns (address[50] memory) {
         address[50] memory fellow;
         if (!isIssuerTypeExist(typeName)) {
             return fellow;
@@ -192,7 +191,7 @@ contract SpecificIssuerData {
         return fellow;
     }
 
-    function getSpecificTypeIssuerLength(bytes32 typeName) public constant returns (uint) {
+    function getSpecificTypeIssuerLength(bytes32 typeName) public view returns (uint) {
         if (!isIssuerTypeExist(typeName)) {
             return 0;
         }

@@ -1,27 +1,23 @@
-pragma solidity ^0.4.4;
-/*
- *       CopyrightÂ© (2018-2019) WeBank Co., Ltd.
- *
- *       This file is part of weidentity-contract.
- *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
- */
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
 
-/**
- * @title Evidence
- * Evidence contract, created by Factory class.
+/*
+ *       Copyright© (2018) WeBank Co., Ltd.
+ *
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 contract Evidence {
     bytes32[] private dataHash;
@@ -32,19 +28,19 @@ contract Evidence {
     bytes32[] private extraContent;
 
     // Event and Constants.
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
+    uint private RETURN_CODE_SUCCESS = 0;
+    uint private RETURN_CODE_FAILURE_ILLEGAL_INPUT = 500401;
     event AddSignatureLog(uint retCode, address signer, bytes32 r, bytes32 s, uint8 v);
     event AddExtraContentLog(uint retCode, address sender, bytes32 extraContent);
     event AddHashLog(uint retCode, address signer);
 
-    function Evidence(
-        bytes32[] hashValue,
-        address[] signerValue,
+    constructor(
+        bytes32[] memory hashValue,
+        address[] memory signerValue,
         bytes32 rValue,
         bytes32 sValue,
         uint8 vValue,
-        bytes32[] extraValue
+        bytes32[] memory extraValue
     )
         public
     {
@@ -77,13 +73,13 @@ contract Evidence {
         }
     }
 
-    function getInfo() public constant returns (
-        bytes32[] hashValue,
-        address[] signerValue,
-        bytes32[] rValue,
-        bytes32[] sValue,
-        uint8[] vValue,
-        bytes32[] extraValue
+    function getInfo() public view returns (
+        bytes32[] memory hashValue,
+        address[] memory signerValue,
+        bytes32[] memory rValue,
+        bytes32[] memory sValue,
+        uint8[] memory vValue,
+        bytes32[] memory extraValue
     )
     {
         uint numOfHashParts = dataHash.length;
@@ -128,15 +124,15 @@ contract Evidence {
                 r[index] = rValue;
                 s[index] = sValue;
                 v[index] = vValue;
-                AddSignatureLog(RETURN_CODE_SUCCESS, tx.origin, rValue, sValue, vValue);
+                emit AddSignatureLog(RETURN_CODE_SUCCESS, tx.origin, rValue, sValue, vValue);
                 return true;
             }
         }
-        AddSignatureLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, rValue, sValue, vValue);
+        emit AddSignatureLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, rValue, sValue, vValue);
         return false;
     }
 
-    function setHash(bytes32[] hashArray) public {
+    function setHash(bytes32[] memory hashArray) public {
         uint numOfSigners = signer.length;
         for (uint index = 0; index < numOfSigners; index++) {
             if (tx.origin == signer[index]) {
@@ -144,11 +140,11 @@ contract Evidence {
                 for (uint i = 0; i < hashArray.length; i++) {
                     dataHash[i] = hashArray[i];
                 }
-                AddHashLog(RETURN_CODE_SUCCESS, tx.origin);
+                emit AddHashLog(RETURN_CODE_SUCCESS, tx.origin);
                 return;
             }
         }
-        AddHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
+        emit AddHashLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin);
         return;
     }
 
@@ -157,11 +153,11 @@ contract Evidence {
         for (uint index = 0; index < numOfSigners; index++) {
             if (tx.origin == signer[index]) {
                 extraContent.push(extraValue);
-                AddExtraContentLog(RETURN_CODE_SUCCESS, tx.origin, extraValue);
+                emit AddExtraContentLog(RETURN_CODE_SUCCESS, tx.origin, extraValue);
                 return true;
             }
         }
-        AddExtraContentLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, extraValue);
+        emit AddExtraContentLog(RETURN_CODE_FAILURE_ILLEGAL_INPUT, tx.origin, extraValue);
         return false;
     }
 }

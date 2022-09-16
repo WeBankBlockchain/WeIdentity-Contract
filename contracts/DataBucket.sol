@@ -1,24 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
 pragma experimental ABIEncoderV2;
 
 /*
- *       Copyright© (2018-2020) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 contract DataBucket {
     
     string[] bucketIdList;      // all bucketId
@@ -37,13 +36,13 @@ contract DataBucket {
     
     address owner;
     
-    uint8 constant private SUCCESS = 100;
-    uint8 constant private NO_PERMISSION = 101;
-    uint8 constant private THE_BUCKET_DOES_NOT_EXIST = 102;
-    uint8 constant private THE_BUCKET_IS_USED = 103;
-    uint8 constant private THE_BUCKET_IS_NOT_USED = 104;
+    uint8 private SUCCESS = 100;
+    uint8 private NO_PERMISSION = 101;
+    uint8 private THE_BUCKET_DOES_NOT_EXIST = 102;
+    uint8 private THE_BUCKET_IS_USED = 103;
+    uint8 private THE_BUCKET_IS_NOT_USED = 104;
     
-    function DataBucket() public {
+    constructor() public {
         owner = msg.sender;
     }
     
@@ -56,9 +55,9 @@ contract DataBucket {
      * @return code the code for result
      */ 
     function put(
-        string bucketId, 
+        string memory bucketId, 
         bytes32 key, 
-        string value
+        string memory value
     ) 
         public 
         returns (uint8 code) 
@@ -68,7 +67,7 @@ contract DataBucket {
         if (data.owner == address(0x0)) {
             data.bucketId = bucketId;
             data.owner = msg.sender;
-            data.timestamp = now;
+            data.timestamp = block.timestamp;
             pushBucketId(data);
             data.extra[key] = value;
             return SUCCESS;
@@ -113,19 +112,12 @@ contract DataBucket {
         }
     }
     
-    /**
-     * get value by key in the bucket data.
-     * 
-     * @param bucketId the bucketId
-     * @param key get the value by this key
-     * @return value the value
-     */ 
     function get(
-        string bucketId, 
+        string memory bucketId, 
         bytes32 key
     ) 
         public view
-        returns (uint8 code, string value) 
+        returns (uint8 code, string memory value) 
     {
         DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
@@ -133,22 +125,15 @@ contract DataBucket {
         }
         return (SUCCESS, data.extra[key]);
     }
-    
-    /**
-     * remove bucket when the key is null, others remove the key
-     * 
-     * @param bucketId the bucketId
-     * @param key the key
-     * @return the code for result
-     */ 
+
     function removeExtraItem(
-        string bucketId, 
+        string memory bucketId, 
         bytes32 key
     ) 
         public 
         returns (uint8 code) 
     {
-        DataStruct memory data = bucketData[bucketId];
+        DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
             return THE_BUCKET_DOES_NOT_EXIST;
         } else if (msg.sender != data.owner) {
@@ -156,26 +141,19 @@ contract DataBucket {
         } else if (data.isUsed) {
             return THE_BUCKET_IS_USED;
         } else {
-           delete bucketData[bucketId].extra[key];
+           delete data.extra[key];
            return SUCCESS;
         }
     }
-    
-    /**
-     * remove bucket when the key is null, others remove the key
-     * 
-     * @param bucketId the bucketId
-     * @param force force delete
-     * @return the code for result
-     */ 
+
     function removeDataBucketItem(
-        string bucketId,
+        string memory bucketId,
         bool force
     ) 
         public 
         returns (uint8 code) 
     {
-        DataStruct memory data = bucketData[bucketId];
+        DataStruct storage data = bucketData[bucketId];
         if (data.owner == address(0x0)) {
             return THE_BUCKET_DOES_NOT_EXIST;
         } else if (msg.sender == owner && force) {
@@ -198,7 +176,7 @@ contract DataBucket {
      * @param bucketId the bucketId
      */
     function enable(
-        string bucketId
+        string memory bucketId
     ) 
         public 
         returns (uint8) 
@@ -280,7 +258,7 @@ contract DataBucket {
      * @param bucketId the bucketId
      */
     function disable(
-        string bucketId
+        string memory bucketId
     ) 
         public 
         returns (uint8) 
@@ -306,7 +284,7 @@ contract DataBucket {
     ) 
         public 
         view
-        returns (string[] bucketIds, address[] owners, uint256[] timestamps, uint8 nextIndex) 
+        returns (string[] memory bucketIds, address[] memory owners, uint256[] memory timestamps, uint8 nextIndex) 
     {
         bucketIds = new string[](num);
         owners = new address[](num);
@@ -316,10 +294,9 @@ contract DataBucket {
         for (uint8 i = index; i < bucketIdList.length; i++) {
             string storage bucketId = bucketIdList[i];
             if (!isEqualString(bucketId, "")) {
-                DataStruct memory data = bucketData[bucketId];
                 bucketIds[currentIndex] = bucketId;
-                owners[currentIndex] = data.owner;
-                timestamps[currentIndex] = data.timestamp;
+                owners[currentIndex] = bucketData[bucketId].owner;
+                timestamps[currentIndex] = bucketData[bucketId].timestamp;
                 currentIndex++;
                 if (currentIndex == num && i != bucketIdList.length - 1) {
                     next = i + 1;
@@ -331,17 +308,17 @@ contract DataBucket {
     }
     
     function isEqualString(
-        string a, 
-        string b
+        string memory a, 
+        string memory b
     ) 
         private 
-        constant 
+        view 
         returns (bool) 
     {
         if (bytes(a).length != bytes(b).length) {
             return false;
         } else {
-            return keccak256(a) == keccak256(b);
+            return keccak256(abi.encode(a)) == keccak256(abi.encode(b));
         }
     }
     
@@ -349,7 +326,7 @@ contract DataBucket {
      * update the owner of bucket
      */
     function updateBucketOwner(
-        string bucketId,
+        string memory bucketId,
         address newOwner
     ) 
         public 
@@ -379,24 +356,23 @@ contract DataBucket {
      * @param num query count
      */ 
     function getActivatedUserList(
-        string bucketId,
+        string memory bucketId,
         uint8 index, 
         uint8 num
     ) 
         public 
         view
-        returns (address[] users, uint8 nextIndex) 
+        returns (address[] memory users, uint8 nextIndex) 
     {
         users = new address[](num);
         uint8 userIndex = 0;
         uint8 next = 0;
-        DataStruct memory data = bucketData[bucketId];
-        for (uint8 i = index; i < data.useAddress.length; i++) {
-            address user = data.useAddress[i];
+        for (uint8 i = index; i < bucketData[bucketId].useAddress.length; i++) {
+            address user = bucketData[bucketId].useAddress[i];
             if (user != address(0x0)) {
                 users[userIndex] = user;
                 userIndex++;
-                if (userIndex == num && i != data.useAddress.length - 1) {
+                if (userIndex == num && i != bucketData[bucketId].useAddress.length - 1) {
                     next = i + 1;
                     break;
                 }

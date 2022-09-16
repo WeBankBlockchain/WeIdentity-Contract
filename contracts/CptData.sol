@@ -1,36 +1,35 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
-
+//SPDX-License-Identifier: Apache-2.0
 import "./AuthorityIssuerData.sol";
-
 contract CptData {
     // CPT ID has been categorized into 3 zones: 0 - 999 are reserved for system CPTs,
     //  1000-2000000 for Authority Issuer's CPTs, and the rest for common WeIdentiy DIDs.
-    uint constant public AUTHORITY_ISSUER_START_ID = 1000;
-    uint constant public NONE_AUTHORITY_ISSUER_START_ID = 2000000;
+    uint public AUTHORITY_ISSUER_START_ID = 1000;
+    uint public NONE_AUTHORITY_ISSUER_START_ID = 2000000;
     uint private authority_issuer_current_id = 1000;
     uint private none_authority_issuer_current_id = 2000000;
 
     AuthorityIssuerData private authorityIssuerData;
 
-    function CptData(
+    constructor(
         address authorityIssuerDataAddress
     ) 
         public
@@ -63,9 +62,9 @@ contract CptData {
     function putCpt(
         uint cptId, 
         address cptPublisher, 
-        int[8] cptIntArray, 
-        bytes32[8] cptBytes32Array,
-        bytes32[128] cptJsonSchemaArray, 
+        int[8] memory cptIntArray, 
+        bytes32[8] memory cptBytes32Array,
+        bytes32[128] memory cptJsonSchemaArray, 
         uint8 cptV, 
         bytes32 cptR, 
         bytes32 cptS
@@ -83,7 +82,6 @@ contract CptData {
         address publisher
     ) 
         public 
-        constant
         returns 
         (uint cptId)
     {
@@ -107,12 +105,12 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns (
         address publisher, 
-        int[8] intArray, 
-        bytes32[8] bytes32Array,
-        bytes32[128] jsonSchemaArray, 
+        int[8] memory intArray, 
+        bytes32[8] memory bytes32Array,
+        bytes32[128] memory jsonSchemaArray, 
         uint8 v, 
         bytes32 r, 
         bytes32 s) 
@@ -131,7 +129,7 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns (address publisher)
     {
         Cpt memory cpt = cptMap[cptId];
@@ -142,8 +140,8 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
-        returns (int[8] intArray)
+        view 
+        returns (int[8] memory intArray)
     {
         Cpt memory cpt = cptMap[cptId];
         intArray = cpt.intArray;
@@ -153,8 +151,8 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
-        returns (bytes32[128] jsonSchemaArray)
+        view 
+        returns (bytes32[128] memory jsonSchemaArray)
     {
         Cpt memory cpt = cptMap[cptId];
         jsonSchemaArray = cpt.jsonSchemaArray;
@@ -164,8 +162,8 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
-        returns (bytes32[8] bytes32Array)
+        view 
+        returns (bytes32[8] memory bytes32Array)
     {
         Cpt memory cpt = cptMap[cptId];
         bytes32Array = cpt.bytes32Array;
@@ -175,7 +173,7 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns (uint8 v, bytes32 r, bytes32 s) 
     {
         Cpt memory cpt = cptMap[cptId];
@@ -188,7 +186,7 @@ contract CptData {
         uint cptId
     ) 
         public 
-        constant 
+        view 
         returns (bool)
     {
         int[8] memory intArray = getCptIntArray(cptId);
@@ -199,11 +197,11 @@ contract CptData {
         }
     }
 
-    function getDatasetLength() public constant returns (uint) {
+    function getDatasetLength() public view returns (uint) {
         return cptIdList.length;
     }
 
-    function getCptIdFromIndex(uint index) public constant returns (uint) {
+    function getCptIdFromIndex(uint index) public view returns (uint) {
         return cptIdList[index];
     }
 }

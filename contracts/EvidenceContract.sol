@@ -1,102 +1,96 @@
-pragma solidity ^0.4.25;
+pragma solidity >=0.6.10 <0.8.20;
 pragma experimental ABIEncoderV2;
 
 /*
- *       Copyright@ (2018-2020) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
- *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
- */
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
 
+ *          http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
+ */
+//SPDX-License-Identifier: Apache-2.0
 contract EvidenceContract {
 
-    // block number map, hash as key
-    mapping(bytes32 => uint256) changed;
-    // hash map, extra id string as key, hash as value
+    //Evidence struct
+    struct Evidence {
+        address[] signer;
+        string[] sig;
+        string[] log;
+        uint256[] updated;
+        bool[] revoked;
+        mapping(string => string) extra;
+    }
+    // Evidence hash => Evidence
+    mapping(bytes32 => Evidence) evidences;
+    // extra id => Evidence hash
     mapping(string => bytes32) extraKeyMapping;
+
 
     // Evidence attribute change event including signature and logs
     event EvidenceAttributeChanged(
-        bytes32[] hash,
-        address[] signer,
-        string[] sigs,
-        string[] logs,
-        uint256[] updated,
-        uint256[] previousBlock
-    );
-    
-    // Additional Evidence attribute change event
-    event EvidenceExtraAttributeChanged(
-        bytes32[] hash,
-        address[] signer,
-        string[] keys,
-        string[] values,
-        uint256[] updated,
-        uint256[] previousBlock
+        bytes32 hash,
+        address signer,
+        string sig,
+        string logs,
+        uint256 updated
     );
 
-    function getLatestRelatedBlock(
-        bytes32 hash
-    ) 
-        public 
-        constant 
-        returns (uint256) 
-    {
-        return changed[hash];
-    }
+    event CreateEvidence(
+        bytes32 hash,
+        address signer,
+        string sig,
+        string logs,
+        uint256 updated
+    );
+
+    // Additional Evidence attribute change event
+    event EvidenceExtraAttributeChanged(
+        bytes32 hash,
+        address signer,
+        string key,
+        string value,
+        uint256 updated
+    );
+    
+    event Revoke(
+        bytes32 hash,
+        address signer,
+        bool revoke
+    );
 
     /**
      * Create evidence. Here, hash value is the key; signature and log are values. 
      * This will only create a new evidence if its hash does not exist.
      */
     function createEvidence(
-        bytes32[] hash,
-        address[] signer,
-        string[] sigs,
-        string[] logs,
-        uint256[] updated
+        bytes32[] memory hash,
+        address[] memory signer,
+        string[] memory sigs,
+        string[] memory logs,
+        uint256[] memory updated
     )
         public
     {
         uint256 sigSize = hash.length;
-        bytes32[] memory hashs = new bytes32[](sigSize);
-        string[] memory sigss = new string[](sigSize);
-        string[] memory logss = new string[](sigSize);
-        address[] memory signers = new address[](sigSize);
-        uint256[] memory updateds = new uint256[](sigSize);
-        uint256[] memory previousBlocks = new uint256[](sigSize);
-        uint256 succeededCount = 0;
         for (uint256 i = 0; i < sigSize; i++) {
-            bytes32 thisHash = hash[i];
-            if (!isHashExist(thisHash)) {
-                if (isEqualString(sigs[i], "")) {
-                    // this record is a pure log event while hash does not exist, hence skipped
-                    continue;
-                }
-                succeededCount++;
-                hashs[i] = thisHash;
-                sigss[i] = sigs[i];
-                logss[i] = logs[i];
-                signers[i] = signer[i];
-                updateds[i] = updated[i];
-                previousBlocks[i] = changed[thisHash];
-                changed[thisHash] = block.number;
+            Evidence storage evidence = evidences[hash[i]];
+            if (!isHashExist(hash[i])) {
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
+                emit CreateEvidence(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
-        }
-        if (succeededCount > 0) {
-            emit EvidenceAttributeChanged(hashs, signers, sigss, logss, updateds, previousBlocks);
         }
     }
 
@@ -104,43 +98,25 @@ contract EvidenceContract {
      * Add signature and logs to an existing evidence. Here, hash value is the key; signature and log are values. 
      */
     function addSignatureAndLogs(
-        bytes32[] hash,
-        address[] signer,
-        string[] sigs,
-        string[] logs,
-        uint256[] updated
+        bytes32[] memory hash,
+        address[] memory signer,
+        string[] memory sigs,
+        string[] memory logs,
+        uint256[] memory updated
     )
         public
     {
         uint256 sigSize = hash.length;
-        bytes32[] memory hashs = new bytes32[](sigSize);
-        string[] memory sigss = new string[](sigSize);
-        string[] memory logss = new string[](sigSize);
-        address[] memory signers = new address[](sigSize);
-        uint256[] memory updateds = new uint256[](sigSize);
-        uint256[] memory previousBlocks = new uint256[](sigSize);
-        uint256 succeededCount = 0;
         for (uint256 i = 0; i < sigSize; i++) {
-            bytes32 thisHash = hash[i];
-            if (isHashExist(thisHash)) {
-                if (isEqualString(sigs[i], "")) {
-                    if (isEqualString(logs[i], "")) {
-                        // this record is a pure log event & hash does not exist, hence skipped
-                        continue;
-                    }
-                }
-                succeededCount++;
-                hashs[i] = thisHash;
-                sigss[i] = sigs[i];
-                logss[i] = logs[i];
-                signers[i] = signer[i];
-                updateds[i] = updated[i];
-                previousBlocks[i] = changed[thisHash];
-                changed[thisHash] = block.number;
+            Evidence storage evidence = evidences[hash[i]];
+            if (isHashExist(hash[i])) {
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
+                emit EvidenceAttributeChanged(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
-        }
-        if (succeededCount > 0) {
-            emit EvidenceAttributeChanged(hashs, signers, sigss, logss, updateds, previousBlocks);
         }
     }
 
@@ -151,45 +127,29 @@ contract EvidenceContract {
      * This will only create a new evidence if its hash does not exist.
      */
     function createEvidenceWithExtraKey(
-        bytes32[] hash,
-        address[] signer,
-        string[] sigs,
-        string[] logs,
-        uint256[] updated,
-        string[] extraKey
+        bytes32[] memory hash,
+        address[] memory signer,
+        string[] memory sigs,
+        string[] memory logs,
+        uint256[] memory updated,
+        string[] memory extraKey
     )
         public
     {
         uint256 sigSize = hash.length;
-        bytes32[] memory hashs = new bytes32[](sigSize);
-        string[] memory sigss = new string[](sigSize);
-        string[] memory logss = new string[](sigSize);
-        address[] memory signers = new address[](sigSize);
-        uint256[] memory updateds = new uint256[](sigSize);
-        uint256[] memory previousBlocks = new uint256[](sigSize);
-        uint256 succeededCount = 0;
         for (uint256 i = 0; i < sigSize; i++) {
-            bytes32 thisHash = hash[i];
-            if (!isHashExist(thisHash)) {
-                if (isEqualString(sigs[i], "")) {
-                    // this record is a pure log event while hash does not exist, hence skipped
-                    continue;
-                }
-                succeededCount++;
-                hashs[i] = thisHash;
-                sigss[i] = sigs[i];
-                logss[i] = logs[i];
-                signers[i] = signer[i];
-                updateds[i] = updated[i];
-                previousBlocks[i] = changed[thisHash];
-                changed[thisHash] = block.number;
+            Evidence storage evidence = evidences[hash[i]];
+            if (!isHashExist(hash[i])) {
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 if (!isEqualString(extraKey[i], "")) {
-                    extraKeyMapping[extraKey[i]] = thisHash;
+                    extraKeyMapping[extraKey[i]] = hash[i];
                 }
+                emit CreateEvidence(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
-        }
-        if (succeededCount > 0) {
-            emit EvidenceAttributeChanged(hashs, signers, sigss, logss, updateds, previousBlocks);
         }
     }
 
@@ -199,47 +159,29 @@ contract EvidenceContract {
      * to obtain the detailed info from within. This will only emit creation events when an evidence exists.
      */
     function addSignatureAndLogsWithExtraKey(
-        bytes32[] hash,
-        address[] signer,
-        string[] sigs,
-        string[] logs,
-        uint256[] updated,
-        string[] extraKey
+        bytes32[] memory hash,
+        address[] memory signer,
+        string[] memory sigs,
+        string[] memory logs,
+        uint256[] memory updated,
+        string[] memory extraKey
     )
         public
     {
         uint256 sigSize = hash.length;
-        bytes32[] memory hashs = new bytes32[](sigSize);
-        string[] memory sigss = new string[](sigSize);
-        string[] memory logss = new string[](sigSize);
-        address[] memory signers = new address[](sigSize);
-        uint256[] memory updateds = new uint256[](sigSize);
-        uint256[] memory previousBlocks = new uint256[](sigSize);
-        uint256 succeededCount = 0;
         for (uint256 i = 0; i < sigSize; i++) {
-            bytes32 thisHash = hash[i];
-            if (isHashExist(thisHash)) {
-                if (isEqualString(sigs[i], "")) {
-                    if (isEqualString(logs[i], "")) {
-                        // this record is a pure log event & hash does not exist, hence skipped
-                        continue;
-                    }
-                }
-                succeededCount++;
-                hashs[i] = thisHash;
-                sigss[i] = sigs[i];
-                logss[i] = logs[i];
-                signers[i] = signer[i];
-                updateds[i] = updated[i];
-                previousBlocks[i] = changed[thisHash];
-                changed[thisHash] = block.number;
+            Evidence storage evidence = evidences[hash[i]];
+            if (isHashExist(hash[i])) {
+                evidence.sig.push(sigs[i]);
+                evidence.log.push(logs[i]);
+                evidence.signer.push(signer[i]);
+                evidence.updated.push(updated[i]);
+                evidence.revoked.push(false);
                 if (!isEqualString(extraKey[i], "")) {
-                    extraKeyMapping[extraKey[i]] = thisHash;
+                    extraKeyMapping[extraKey[i]] = hash[i];
                 }
+                emit EvidenceAttributeChanged(hash[i], signer[i], sigs[i], logs[i], updated[i]);
             }
-        }
-        if (succeededCount > 0) {
-            emit EvidenceAttributeChanged(hashs, signers, sigss, logss, updateds, previousBlocks);
         }
     }
 
@@ -247,45 +189,76 @@ contract EvidenceContract {
      * Set arbitrary extra attributes to any EXISTING evidence.
      */
     function setAttribute(
-        bytes32[] hash,
-        address[] signer,
-        string[] key,
-        string[] value,
-        uint256[] updated
+        bytes32[] memory hash,
+        address[] memory signer,
+        string[] memory key,
+        string[] memory value,
+        uint256[] memory updated
     )
         public
     {
         uint256 sigSize = hash.length;
-        bytes32[] memory hashs = new bytes32[](sigSize);
-        string[] memory keys = new string[](sigSize);
-        string[] memory values = new string[](sigSize);
-        address[] memory signers = new address[](sigSize);
-        uint256[] memory updateds = new uint256[](sigSize);
-        uint256[] memory previousBlocks = new uint256[](sigSize);
         for (uint256 i = 0; i < sigSize; i++) {
-            bytes32 thisHash = hash[i];
-            if (isHashExist(thisHash)) {
-                hashs[i] = thisHash;
-                keys[i] = key[i];
-                values[i] = value[i];
-                signers[i] = signer[i];
-                updateds[i] = updated[i];
-                previousBlocks[i] = changed[thisHash];
-                changed[thisHash] = block.number;
+            if (isHashExist(hash[i])) {
+                Evidence storage evidence = evidences[hash[i]];
+                evidence.extra[key[i]] = value[i];
+                emit EvidenceExtraAttributeChanged(hash[i], signer[i], key[i], value[i], updated[i]);
             }
         }
-        emit EvidenceExtraAttributeChanged(hashs, signers, keys, values, updateds, previousBlocks);
+    }
+    
+    function revoke(
+        bytes32 _hash,
+        address _signer,
+        bool _revoke
+    )
+        public
+    {
+        require(isHashExist(_hash), "require evidence not exist");
+        Evidence storage evidence = evidences[_hash];
+        bool tag = false;
+        for (uint256 i = 0; i < evidence.signer.length; i++) {
+            if (_signer == evidence.signer[i]) {
+                tag = true;
+                evidence.revoked[i] = _revoke;
+                emit Revoke(_hash, _signer, _revoke);
+                break;
+            }
+        }
+        require(tag, "signer of this evidence not exist");
+    }
+
+    function getAttribute(
+        bytes32 hash,
+        string memory key
+    )
+        public
+        view
+        returns (string memory)
+    {
+        return evidences[hash].extra[key];
+    }
+
+    function getEvidence(
+        bytes32 hash
+    )
+        public
+        view
+        returns (address[] memory signer, string[] memory sig, string[] memory log, uint256[] memory updated, bool[] memory revoked)
+    {
+        require(isHashExist(hash), "require evidence not exist");
+        return (evidences[hash].signer, evidences[hash].sig, evidences[hash].log, evidences[hash].updated, evidences[hash].revoked);
     }
 
     function isHashExist(bytes32 hash) public view returns (bool) {
-        if (changed[hash] != 0) {
+        if (evidences[hash].signer.length != 0) {
             return true;
         }
         return false;
     }
 
     function getHashByExtraKey(
-        string extraKey
+        string memory extraKey
     )
         public
         view
@@ -294,11 +267,11 @@ contract EvidenceContract {
         return extraKeyMapping[extraKey];
     }
 
-    function isEqualString(string a, string b) private pure returns (bool) {	
+    function isEqualString(string memory a, string memory b) private pure returns (bool) {	
         if (bytes(a).length != bytes(b).length) {	
             return false;	
         } else {	
-            return keccak256(a) == keccak256(b);	
+            return keccak256(abi.encode(a)) == keccak256(abi.encode(b));	
         }	
     }
 }
