@@ -168,7 +168,7 @@ contract WeIdContract {
         returns(
         address[] memory    
     ){
-        require(first >= 0 && last > first && last < weids.length, "params are invalid!");
+        require(first >= 0 && last >= first && last < weids.length, "params are invalid!");
         uint256 number = last - first + 1;
         address[] memory weidQuery = new address[](number);
         for(uint256 i=0; i<number; i++){
