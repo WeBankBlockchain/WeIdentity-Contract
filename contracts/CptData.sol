@@ -27,7 +27,10 @@ contract CptData {
     uint constant public NONE_AUTHORITY_ISSUER_START_ID = 2000000;
     uint private authority_issuer_current_id = 1000;
     uint private none_authority_issuer_current_id = 2000000;
-
+    
+    // Default CPT version
+    uint constant private CPT_DEFAULT_VERSION = 1;
+    
     AuthorityIssuerData private authorityIssuerData;
 
     function CptData(
@@ -56,8 +59,9 @@ contract CptData {
         //store signature
         Signature signature;
     }
-
-    mapping (uint => Cpt) private cptMap;
+    
+    mapping (uint => mapping(uint => Cpt)) private cptMap;
+    
     uint[] private cptIdList;
 
     function putCpt(
@@ -74,7 +78,7 @@ contract CptData {
         returns (bool) 
     {
         Signature memory cptSignature = Signature({v: cptV, r: cptR, s: cptS});
-        cptMap[cptId] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
+        cptMap[cptId][uint(cptIntArray[0])] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
         cptIdList.push(cptId);
         return true;
     }
@@ -92,13 +96,8 @@ contract CptData {
     public
     returns (bool)
     {
-        cptMap[cptId].signature.v=cptV;
-        cptMap[cptId].signature.r=cptR;
-        cptMap[cptId].signature.s=cptS;
-        cptMap[cptId].publisher=cptPublisher;
-        cptMap[cptId].intArray=cptIntArray;
-        cptMap[cptId].bytes32Array=cptBytes32Array;
-        cptMap[cptId].jsonSchemaArray=cptJsonSchemaArray;
+        Signature memory cptSignature = Signature({v: cptV, r: cptR, s: cptS});
+        cptMap[cptId][uint(cptIntArray[0])] = Cpt({publisher: cptPublisher, intArray: cptIntArray, bytes32Array: cptBytes32Array, jsonSchemaArray:cptJsonSchemaArray, signature: cptSignature});
         return true;
     }
 
@@ -140,7 +139,32 @@ contract CptData {
         bytes32 r, 
         bytes32 s) 
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
+        publisher = cpt.publisher;
+        intArray = cpt.intArray;
+        bytes32Array = cpt.bytes32Array;
+        jsonSchemaArray = cpt.jsonSchemaArray;
+        v = cpt.signature.v;
+        r = cpt.signature.r;
+        s = cpt.signature.s;
+    }
+     
+    function getCpt(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (
+        address publisher, 
+        int[8] intArray, 
+        bytes32[8] bytes32Array,
+        bytes32[128] jsonSchemaArray, 
+        uint8 v, 
+        bytes32 r, 
+        bytes32 s) 
+    {
+        Cpt memory cpt = cptMap[cptId][version];
         publisher = cpt.publisher;
         intArray = cpt.intArray;
         bytes32Array = cpt.bytes32Array;
@@ -149,7 +173,7 @@ contract CptData {
         r = cpt.signature.r;
         s = cpt.signature.s;
     } 
-
+    
     function getCptPublisher(
         uint cptId
     ) 
@@ -157,10 +181,21 @@ contract CptData {
         constant 
         returns (address publisher)
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
         publisher = cpt.publisher;
     }
-
+    
+    function getCptPublisher(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (address publisher)
+    {
+        Cpt memory cpt = cptMap[cptId][version];
+        publisher = cpt.publisher;
+    }
     function getCptIntArray(
         uint cptId
     ) 
@@ -168,10 +203,22 @@ contract CptData {
         constant 
         returns (int[8] intArray)
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
         intArray = cpt.intArray;
     }
-
+    
+    function getCptIntArray(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (int[8] intArray)
+    {
+        Cpt memory cpt = cptMap[cptId][version];
+        intArray = cpt.intArray;
+    }
+    
     function getCptJsonSchemaArray(
         uint cptId
     ) 
@@ -179,7 +226,19 @@ contract CptData {
         constant 
         returns (bytes32[128] jsonSchemaArray)
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
+        jsonSchemaArray = cpt.jsonSchemaArray;
+    }
+    
+    function getCptJsonSchemaArray(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (bytes32[128] jsonSchemaArray)
+    {
+        Cpt memory cpt = cptMap[cptId][version];
         jsonSchemaArray = cpt.jsonSchemaArray;
     }
 
@@ -190,7 +249,19 @@ contract CptData {
         constant 
         returns (bytes32[8] bytes32Array)
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
+        bytes32Array = cpt.bytes32Array;
+    }
+    
+    function getCptBytes32Array(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (bytes32[8] bytes32Array)
+    {
+        Cpt memory cpt = cptMap[cptId][version];
         bytes32Array = cpt.bytes32Array;
     }
 
@@ -201,12 +272,25 @@ contract CptData {
         constant 
         returns (uint8 v, bytes32 r, bytes32 s) 
     {
-        Cpt memory cpt = cptMap[cptId];
+        Cpt memory cpt = cptMap[cptId][CPT_DEFAULT_VERSION];
         v = cpt.signature.v;
         r = cpt.signature.r;
         s = cpt.signature.s;
     }
-
+    
+    function getCptSignature(
+        uint cptId,
+        uint version
+    ) 
+        public 
+        constant 
+        returns (uint8 v, bytes32 r, bytes32 s) 
+    {
+        Cpt memory cpt = cptMap[cptId][version];
+        v = cpt.signature.v;
+        r = cpt.signature.r;
+        s = cpt.signature.s;
+    }
     function isCptExist(
         uint cptId
     ) 
