@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./RoleController.sol";
 
@@ -28,11 +29,11 @@ import "./RoleController.sol";
 contract AuthorityIssuerData {
 
     // Error codes
-    uint constant private RETURN_CODE_SUCCESS = 0;
-    uint constant private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
-    uint constant private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
-    uint constant private RETURN_CODE_NAME_ALREADY_EXISTS = 500203;
-    uint constant private RETURN_CODE_UNRECOGNIZED = 500204;
+    uint private RETURN_CODE_SUCCESS = 0;
+    uint private RETURN_CODE_FAILURE_ALREADY_EXISTS = 500201;
+    uint private RETURN_CODE_FAILURE_NOT_EXIST = 500202;
+    uint private RETURN_CODE_NAME_ALREADY_EXISTS = 500203;
+    uint private RETURN_CODE_UNRECOGNIZED = 500204;
 
     struct AuthorityIssuer {
         // [0]: name, [1]: desc, [2-11]: extra string
@@ -51,7 +52,7 @@ contract AuthorityIssuerData {
     RoleController private roleController;
 
     // Constructor
-    function AuthorityIssuerData(address addr) public {
+    constructor(address addr) public {
         roleController = RoleController(addr);
     }
 
@@ -59,7 +60,7 @@ contract AuthorityIssuerData {
         address addr
     ) 
         public 
-        constant 
+        view 
         returns (bool) 
     {
         if (!roleController.checkRole(addr, roleController.ROLE_AUTHORITY_ISSUER())) {
@@ -73,9 +74,9 @@ contract AuthorityIssuerData {
 
     function addAuthorityIssuerFromAddress(
         address addr,
-        bytes32[16] attribBytes32,
-        int[16] attribInt,
-        bytes accValue
+        bytes32[16] memory attribBytes32,
+        int[16] memory attribInt,
+        bytes memory accValue
     )
         public
         returns (uint)
@@ -135,30 +136,27 @@ contract AuthorityIssuerData {
             return roleController.RETURN_CODE_FAILURE_NO_PERMISSION();
         }
         roleController.removeRole(addr, roleController.ROLE_AUTHORITY_ISSUER());
-        
         if (authorityIssuerMap[addr].attribInt[15] == int(1)) {
             recognizedIssuerCount = recognizedIssuerCount - 1;
         }
-        
         uniqueNameMap[authorityIssuerMap[addr].attribBytes32[0]] = address(0x0);
         delete authorityIssuerMap[addr];
         uint datasetLength = authorityIssuerArray.length;
         for (uint index = 0; index < datasetLength; index++) {
             if (authorityIssuerArray[index] == addr) { 
+                if (index != datasetLength-1) {
+                    authorityIssuerArray[index] = authorityIssuerArray[datasetLength-1];
+                }
                 break; 
             }
         } 
-        if (index != datasetLength-1) {
-            authorityIssuerArray[index] = authorityIssuerArray[datasetLength-1];
-        }
-        delete authorityIssuerArray[datasetLength-1];
-        authorityIssuerArray.length--;
+        authorityIssuerArray.pop();
         return RETURN_CODE_SUCCESS;
     }
 
     function getDatasetLength() 
         public 
-        constant 
+        view 
         returns (uint) 
     {
         return authorityIssuerArray.length;
@@ -168,7 +166,7 @@ contract AuthorityIssuerData {
         uint index
     ) 
         public 
-        constant 
+        view 
         returns (address) 
     {
         return authorityIssuerArray[index];
@@ -178,8 +176,8 @@ contract AuthorityIssuerData {
         address addr
     )
         public
-        constant
-        returns (bytes32[16], int[16])
+        view
+        returns (bytes32[16] memory, int[16] memory)
     {
         bytes32[16] memory allBytes32;
         int[16] memory allInt;
@@ -194,8 +192,8 @@ contract AuthorityIssuerData {
         address addr
     ) 
         public 
-        constant 
-        returns (bytes) 
+        view 
+        returns (bytes memory) 
     {
         return authorityIssuerMap[addr].accValue;
     }
@@ -204,7 +202,7 @@ contract AuthorityIssuerData {
         bytes32 name
     )
         public
-        constant
+        view
         returns (bool) 
     {
         if (uniqueNameMap[name] == address(0x0)) {
@@ -217,15 +215,15 @@ contract AuthorityIssuerData {
         bytes32 name
     )
         public
-        constant
+        view
         returns (address)
     {
         return uniqueNameMap[name];
     }
-
+    
     function getRecognizedIssuerCount() 
         public 
-        constant 
+        view 
         returns (uint) 
     {
         return recognizedIssuerCount;

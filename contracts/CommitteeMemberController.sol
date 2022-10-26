@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2018-2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./CommitteeMemberData.sol";
 import "./RoleController.sol";
@@ -32,13 +33,13 @@ contract CommitteeMemberController {
     RoleController private roleController;
 
     // Event structure to store tx records
-    uint constant private OPERATION_ADD = 0;
-    uint constant private OPERATION_REMOVE = 1;
+    uint private OPERATION_ADD = 0;
+    uint private OPERATION_REMOVE = 1;
     
     event CommitteeRetLog(uint operation, uint retCode, address addr);
 
     // Constructor.
-    function CommitteeMemberController(
+    constructor(
         address committeeMemberDataAddress,
         address roleControllerAddress
     )
@@ -54,11 +55,11 @@ contract CommitteeMemberController {
         public 
     {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            CommitteeRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
+            emit CommitteeRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
         }
         uint result = committeeMemberData.addCommitteeMemberFromAddress(addr);
-        CommitteeRetLog(OPERATION_ADD, result, addr);
+        emit CommitteeRetLog(OPERATION_ADD, result, addr);
     }
 
     function removeCommitteeMember(
@@ -67,17 +68,17 @@ contract CommitteeMemberController {
         public 
     {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_COMMITTEE())) {
-            CommitteeRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
+            emit CommitteeRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), addr);
             return;
         }
         uint result = committeeMemberData.deleteCommitteeMemberFromAddress(addr);
-        CommitteeRetLog(OPERATION_REMOVE, result, addr);
+        emit CommitteeRetLog(OPERATION_REMOVE, result, addr);
     }
 
     function getAllCommitteeMemberAddress() 
         public 
-        constant 
-        returns (address[]) 
+        view 
+        returns (address[] memory) 
     {
         // Per-index access
         uint datasetLength = committeeMemberData.getDatasetLength();
@@ -92,7 +93,7 @@ contract CommitteeMemberController {
         address addr
     ) 
         public 
-        constant 
+        view 
         returns (bool) 
     {
         return committeeMemberData.isCommitteeMember(addr);

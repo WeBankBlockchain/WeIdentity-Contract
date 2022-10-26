@@ -1,22 +1,23 @@
-pragma solidity ^0.4.4;
+pragma solidity >=0.6.10 <0.8.20;
+pragma experimental ABIEncoderV2;
+
 /*
- *       Copyright© (2019) WeBank Co., Ltd.
+ *       Copyright© (2018) WeBank Co., Ltd.
  *
- *       This file is part of weidentity-contract.
+ *       Licensed under the Apache License, Version 2.0 (the "License");
+ *       you may not use this file except in compliance with the License.
+ *       You may obtain a copy of the License at
+
+ *          http://www.apache.org/licenses/LICENSE-2.0
  *
- *       weidentity-contract is free software: you can redistribute it and/or modify
- *       it under the terms of the GNU Lesser General Public License as published by
- *       the Free Software Foundation, either version 3 of the License, or
- *       (at your option) any later version.
- *
- *       weidentity-contract is distributed in the hope that it will be useful,
- *       but WITHOUT ANY WARRANTY; without even the implied warranty of
- *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *       GNU Lesser General Public License for more details.
- *
- *       You should have received a copy of the GNU Lesser General Public License
- *       along with weidentity-contract.  If not, see <https://www.gnu.org/licenses/>.
+ *       Unless required by applicable law or agreed to in writing, software
+ *       distributed under the License is distributed on an "AS IS" BASIS,
+ *       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *       See the License for the specific language governing permissions and
+ *       limitations under the License.
+ *      
  */
+//SPDX-License-Identifier: Apache-2.0
 
 import "./SpecificIssuerData.sol";
 import "./RoleController.sol";
@@ -32,13 +33,13 @@ contract SpecificIssuerController {
     RoleController private roleController;
 
     // Event structure to store tx records
-    uint constant private OPERATION_ADD = 0;
-    uint constant private OPERATION_REMOVE = 1;
+    uint private OPERATION_ADD = 0;
+    uint private OPERATION_REMOVE = 1;
 
     event SpecificIssuerRetLog(uint operation, uint retCode, bytes32 typeName, address addr);
 
     // Constructor.
-    function SpecificIssuerController(
+    constructor(
         address specificIssuerDataAddress,
         address roleControllerAddress
     )
@@ -50,41 +51,41 @@ contract SpecificIssuerController {
 
     function registerIssuerType(bytes32 typeName) public {
         uint result = specificIssuerData.registerIssuerType(typeName);
-        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, 0x0);
+        emit SpecificIssuerRetLog(OPERATION_ADD, result, typeName, address(0));
     }
 
-    function isIssuerTypeExist(bytes32 typeName) public constant returns (bool) {
+    function isIssuerTypeExist(bytes32 typeName) public view returns (bool) {
         return specificIssuerData.isIssuerTypeExist(typeName);
     }
 
     function addIssuer(bytes32 typeName, address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
+            emit SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
             return;
         }
         uint result = specificIssuerData.addIssuer(typeName, addr);
-        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, addr);
+        emit SpecificIssuerRetLog(OPERATION_ADD, result, typeName, addr);
     }
 
     function removeIssuer(bytes32 typeName, address addr) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
+            emit SpecificIssuerRetLog(OPERATION_REMOVE, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, addr);
             return;
         }
         uint result = specificIssuerData.removeIssuer(typeName, addr);
-        SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, addr);
+        emit SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, addr);
     }
 
     function addExtraValue(bytes32 typeName, bytes32 extraValue) public {
         if (!roleController.checkPermission(tx.origin, roleController.MODIFY_KEY_CPT())) {
-            SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, 0x0);
+            emit SpecificIssuerRetLog(OPERATION_ADD, roleController.RETURN_CODE_FAILURE_NO_PERMISSION(), typeName, address(0));
             return;
         }
         uint result = specificIssuerData.addExtraValue(typeName, extraValue);
-        SpecificIssuerRetLog(OPERATION_ADD, result, typeName, 0x0);
+        emit SpecificIssuerRetLog(OPERATION_ADD, result, typeName, address(0));
     }
 
-    function getExtraValue(bytes32 typeName) public constant returns (bytes32[]) {
+    function getExtraValue(bytes32 typeName) public view returns (bytes32[] memory) {
         bytes32[8] memory tempArray = specificIssuerData.getExtraValue(typeName);
         bytes32[] memory resultArray = new bytes32[](8);
         for (uint index = 0; index < 8; index++) {
@@ -93,11 +94,11 @@ contract SpecificIssuerController {
         return resultArray;
     }
 
-    function isSpecificTypeIssuer(bytes32 typeName, address addr) public constant returns (bool) {
+    function isSpecificTypeIssuer(bytes32 typeName, address addr) public view returns (bool) {
         return specificIssuerData.isSpecificTypeIssuer(typeName, addr);
     }
 
-    function getSpecificTypeIssuerList(bytes32 typeName, uint startPos, uint num) public constant returns (address[]) {
+    function getSpecificTypeIssuerList(bytes32 typeName, uint startPos, uint num) public view returns (address[] memory) {
         if (num == 0 || !specificIssuerData.isIssuerTypeExist(typeName)) {
             return new address[](50);
         }
@@ -130,8 +131,8 @@ contract SpecificIssuerController {
         }
         return resultArray;
     }
-
-    function getSpecificTypeIssuerSize(bytes32 typeName) public constant returns (uint) {
+    
+    function getSpecificTypeIssuerSize(bytes32 typeName) public view returns (uint) {
         return specificIssuerData.getSpecificTypeIssuerLength(typeName);
     }
 
@@ -140,8 +141,8 @@ contract SpecificIssuerController {
         uint num
     )
         public
-        constant
-        returns (bytes32[] typeNames, address[] owners, uint256[] createds)
+        view
+        returns (bytes32[] memory, address[] memory, uint256[] memory)
     {
         uint totalLength = specificIssuerData.getTypeNameSize();
 
@@ -155,11 +156,12 @@ contract SpecificIssuerController {
           dataLength = num;
         }
 
-        typeNames = new bytes32[](dataLength);
-        owners = new address[](dataLength);
-        createds = new uint256[](dataLength);
+        bytes32[] memory typeNames = new bytes32[](dataLength);
+        address[] memory owners = new address[](dataLength);
+        uint256[] memory createds = new uint256[](dataLength);
         for (uint index = 0; index < dataLength; index++) {
-          (bytes32 typeName, address owner, uint256 created) = specificIssuerData.getTypInfoByIndex(startPos + index);
+            uint ind = startPos + index;
+          (bytes32 typeName, address owner, uint256 created) = specificIssuerData.getTypInfoByIndex(ind);
           typeNames[index] = typeName;
           owners[index] = owner;
           createds[index] = created;
@@ -169,12 +171,12 @@ contract SpecificIssuerController {
 
     function removeIssuerType(bytes32 typeName) public {
         uint result = specificIssuerData.removeIssuerType(typeName);
-        SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, 0x0);
+        emit SpecificIssuerRetLog(OPERATION_REMOVE, result, typeName, address(0));
     }
 
     function getIssuerTypeCount()
         public
-        constant
+        view
         returns (uint)
     {
         return specificIssuerData.getTypeNameSize();
